@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
 
   s.rubyforge_project = "activerecord-jdbcteradata-adapter"
 
-  s.files         = `git ls-files`.split("\n")
+  s.files         = `git ls-files`.split("\n") + [ "lib/arjdbc/teradata/adapter_java.jar" ]
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
   s.require_paths = ["lib"]
