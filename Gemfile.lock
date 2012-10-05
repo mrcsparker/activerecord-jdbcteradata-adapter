@@ -1,0 +1,20 @@
+PATH
+  remote: .
+  specs:
+    activerecord-jdbcteradata-adapter (0.1)
+      activerecord-jdbc-adapter
+      jdbc-teradata
+
+GEM
+  remote: http://rubygems.org/
+  specs:
+    activerecord-jdbc-adapter (1.2.2)
+    jdbc-teradata (0.1)
+    rake (0.9.2.2)
+
+PLATFORMS
+  java
+
+DEPENDENCIES
+  activerecord-jdbcteradata-adapter!
+  rake

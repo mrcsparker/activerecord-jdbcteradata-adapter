@@ -3,6 +3,7 @@
  * Copyright (c) 2006-2010 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
  * Copyright (c) 2008-2009 Thomas E Enebo <enebo@acm.org>
+ * Copyright (c) 2011 Brian Olsen <brian@maven-group.org>
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -23,41 +24,26 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  ***** END LICENSE BLOCK *****/
+
 package arjdbc.teradata;
+
+import java.io.IOException;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
-import org.jruby.runtime.ObjectAllocator;
-import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.RubyModule;
+import org.jruby.RubyObjectAdapter;
+import org.jruby.javasupport.JavaEmbedUtils;
+import org.jruby.runtime.load.BasicLibraryService;
 
 import arjdbc.jdbc.RubyJdbcConnection;
 
-/**
- *
- * @author mrcsparker
- */
-public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
+public class AdapterJavaService implements BasicLibraryService {
+    private static RubyObjectAdapter rubyApi;
 
-    protected TeradataRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
-        super(runtime, metaClass);
-    }
-
-    @Override
-    protected boolean databaseSupportsSchemas() {
+    public boolean basicLoad(final Ruby runtime) throws IOException {
+        RubyClass jdbcConnection = RubyJdbcConnection.createJdbcConnectionClass(runtime);
+        TeradataRubyJdbcConnection.createTeradataJdbcConnectionClass(runtime, jdbcConnection);
         return true;
     }
-
-    public static RubyClass createTeradataJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        RubyClass clazz = RubyJdbcConnection.getConnectionAdapters(runtime).defineClassUnder("TeradataRubyJdbcConnection",
-                jdbcConnection, TERADATA_JDBCCONNECTION_ALLOCATOR);
-        clazz.defineAnnotatedMethods(TeradataRubyJdbcConnection.class);
-
-        return clazz;
-    }
-
-    private static ObjectAllocator TERADATA_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
-        public IRubyObject allocate(Ruby runtime, RubyClass klass) {
-            return new TeradataRubyJdbcConnection(runtime, klass);
-        }
-    };
 }
