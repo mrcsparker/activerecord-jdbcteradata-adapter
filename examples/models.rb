@@ -12,61 +12,65 @@ CONFIG = {
 ActiveRecord::Base.establish_connection(CONFIG)
 
 class Acct < ActiveRecord::Base
-  def self.table_name
-    'financial.accts'
-  end
+  self.table_name = 'financial.accts'
+  
+  belongs_to :customer, :foreign_key => 'cust_id'
 end
 
 class CheckingAcct < ActiveRecord::Base
-  def self.table_name
-    'financial.checking_acct'
-  end
+  self.table_name = 'financial.checking_acct'
+  self.primary_key = 'cust_id'
+
+  belongs_to :customer, :foreign_key => 'cust_id'
 end
 
 class CheckingTran < ActiveRecord::Base
-  def self.table_name
-    'financial.checking_tran'
-  end
+  self.table_name = 'financial.checking_tran'
+  self.primary_key = 'Tran_Id'
+
+  belongs_to :customer, :foreign_key => 'Cust_Id'
 end
 
 class CreditAcct < ActiveRecord::Base
-  def self.table_name
-    'financial.credit_acct'
-  end
+  self.table_name = 'financial.credit_acct'
+  self.primary_key = 'cust_id'
+
+  belongs_to :customer, :foreign_key => 'cust_id'
 end
 
 class CreditTran < ActiveRecord::Base
-  def self.table_name
-    'financial.credit_tran'
-  end
+  self.table_name ='financial.credit_tran'
+  self.primary_key = 'Tran_Id'
+
+  belongs_to :customer, :foreign_key => 'Cust_Id'
 end
 
 class Customer < ActiveRecord::Base
-  def self.table_name
-    'financial.customer'
-  end
+  self.table_name = 'financial.customer'
+  self.primary_key = 'cust_id'
 end
 
 class CustomerName < ActiveRecord::Base
-  def self.table_name
-    'financial.customer_name'
-  end
+  self.table_name = 'financial.customer_name'
+  self.primary_key = 'cust_id'
+
+  belongs_to :customer, :foreign_key => 'cust_id'
 end
 
 class SavingsAcct < ActiveRecord::Base
-  def self.table_name
-    'financial.savings_acct'
-  end
+  self.table_name = 'financial.savings_acct'
+  self.primary_key = 'cust_id'
+
+  belongs_to :customer, :foreign_key => 'cust_id'
 end
 
 class SavingsTran < ActiveRecord::Base
-  def self.table_name
-    'financial.savings_tran'
-  end
+  self.table_name = 'financial.savings_tran'
+  self.primary_key = 'Tran_Id'
+
+  belongs_to :customer, :foreign_key => 'Cust_Id'
 end
 
 class Tran < ActiveRecord::Base
-  def self.table_name
-    'financial.trans'
-  end
+  self.table_name = 'financial.trans'
 end
