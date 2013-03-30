@@ -24,6 +24,26 @@ describe 'Adapter' do
     @adapter.active?.should be_true
   end
 
+  it '#exec_query' do
+    article_1 = Article.create(:title => 'exec_query_1', :body => 'exec_query_1')
+    article_2 = Article.create(:title => 'exec_query_2', :body => 'exec_query_2')
+    articles = @adapter.exec_query('select * from articles')
+    
+    articles.select { |i| i['title'] == article_1.title }.first.should_not be_nil
+    articles.select { |i| i['title'] == article_2.title }.first.should_not be_nil
+  end
+
+  it '#last_insert_id(table)' do
+    article_1 = Article.create(:title => 'exec_query_1', :body => 'exec_query_1')
+    article_1.id.should eq(@adapter.last_insert_id('articles'))
+
+    article_2 = Article.create(:title => 'exec_query_2', :body => 'exec_query_2')
+    
+    article_1.id.should_not eq(article_2.id)
+
+    article_2.id.should eq(@adapter.last_insert_id('articles'))
+  end
+
   it '#tables' do
     @adapter.tables.should include('articles')
   end
