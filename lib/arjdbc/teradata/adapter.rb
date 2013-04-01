@@ -53,7 +53,7 @@ module ::ArJdbc
         :time => { :name => "TIME" },
         :date => { :name => "DATE" },
         :binary => { :name => "BLOB" },
-        :boolean => { :name => "BYTEINT", :limit => 1 },
+        :boolean => { :name => "BYTEINT" },
         :raw => { :name => "BYTE" }
       })
     end
@@ -110,6 +110,11 @@ module ::ArJdbc
     #- tables
 
     #- table_exists?
+    def table_exists?(table_name)
+      return false unless table_name
+      output = execute("SELECT count(*) as table_count FROM dbc.tables WHERE TableName = '#{table_name}'")
+      output.first['table_count'] > 0
+    end
 
     #+ indexes
     # TODO: Multiple indexes per column
@@ -166,6 +171,12 @@ module ::ArJdbc
       end
     end # column
 
+    def type_cast
+      return super unless value == true || value == false
+
+      value ? 1 : 0
+    end
+
     def quote_column_name(name)
       %Q("#{name}")
     end
@@ -173,6 +184,27 @@ module ::ArJdbc
     def quote_table_name(name)
       name.to_s
     end
+
+    def quote_true
+      '1'
+    end
+
+    def quoted_false
+      '0'
+    end
+
+    def add_index(table_name, column_name, options = {})
+      index_name, index_type, index_columns = add_index_options(table_name, column_name, options)
+      execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} (#{index_columns}) ON #{quote_table_name(table_name)}"
+    end
+    
+    IDENTIFIER_LENGTH = 30 # :nodoc:
+    
+    # maximum length of Oracle identifiers is 30
+    def table_alias_length; IDENTIFIER_LENGTH; end # :nodoc:
+    def table_name_length;  IDENTIFIER_LENGTH; end # :nodoc:
+    def index_name_length;  IDENTIFIER_LENGTH; end # :nodoc:
+    def column_name_length; IDENTIFIER_LENGTH; end # :nodoc:
 
   end
 end
