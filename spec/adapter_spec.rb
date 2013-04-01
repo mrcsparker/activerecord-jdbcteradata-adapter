@@ -19,6 +19,10 @@ describe 'Adapter' do
   it '#native_database_types' do
     @adapter.native_database_types.count.should > 0
   end
+  
+  it '#database_name' do
+    @adapter.database_name.should == 'weblog_development'
+  end
 
   it '#active?' do
     @adapter.active?.should be_true

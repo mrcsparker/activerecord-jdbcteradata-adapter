@@ -16,6 +16,19 @@ module ::ArJdbc
     #- adapter_spec
 
     #+ modify_types
+    def modify_types(types)
+      super(types)
+      types[:primary_key] = 'INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 MINVALUE -2147483647 MAXVALUE 1000000000 NO CYCLE)',
+      types[:string][:limit] = 255
+      types[:integer][:limit] = nil
+      types
+    end
+
+    # Make sure that integer gets specified as INTEGER and not INTEGER(11)
+    def type_to_sql(type, limit = nil, precision = nil, scale = nil)
+      limit = nil if type.to_sym == :integer
+      super(type, limit, precision, scale)
+    end
 
     #+ adapter_name
     def adapter_name
@@ -41,7 +54,6 @@ module ::ArJdbc
 
     #+ native_database_types
     def native_database_types
-
       super.merge({
         :primary_key => 'INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 MINVALUE -2147483647 MAXVALUE 1000000000 NO CYCLE)',
         :string => { :name => 'VARCHAR', :limit => 255 },
@@ -59,6 +71,9 @@ module ::ArJdbc
     end
 
     #- database_name
+    def database_name
+      @connection.config[:database]
+    end
 
     #- native_sql_to_type
 
@@ -112,7 +127,7 @@ module ::ArJdbc
     #- table_exists?
     def table_exists?(table_name)
       return false unless table_name
-      output = execute("SELECT count(*) as table_count FROM dbc.tables WHERE TableName = '#{table_name}'")
+      output = execute("SELECT count(*) as table_count FROM dbc.tables WHERE TableName = '#{table_name}' AND DatabaseName = '#{database_name}'")
       output.first['table_count'] > 0
     end
 
@@ -123,7 +138,7 @@ module ::ArJdbc
       result = select_rows("SELECT" <<
                            " DatabaseName, TableName, ColumnName, IndexType, IndexName, UniqueFlag" <<
                            " FROM DBC.Indices" <<
-                           " WHERE TableName = '#{table_name}'")
+                           " WHERE TableName = '#{table_name}' AND DatabaseName = '#{database_name}'")
     
       result.map do |row|
         idx_database_name = row[0].to_s.strip
@@ -177,12 +192,21 @@ module ::ArJdbc
       value ? 1 : 0
     end
 
+    def quote(value, column = nil)
+      return value.quoted_id if value.respond_to?(:quoted_id)
+      case value
+      when TrueClass  then '1'
+      when FalseClass then '0'
+      else super
+      end
+    end
+
     def quote_column_name(name)
       %Q("#{name}")
     end
 
     def quote_table_name(name)
-      name.to_s
+      %Q("#{name.to_s}")
     end
 
     def quote_true
