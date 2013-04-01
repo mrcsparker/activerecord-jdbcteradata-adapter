@@ -62,7 +62,7 @@ module ::ArJdbc
         :decimal => { :name => "DECIMAL" },
         :datetime => { :name => "TIMESTAMP" },
         :timestamp => { :name => "TIMESTAMP" },
-        :time => { :name => "TIME" },
+        :time => { :name => "TIMESTAMP" },
         :date => { :name => "DATE" },
         :binary => { :name => "BLOB" },
         :boolean => { :name => "BYTEINT" },
