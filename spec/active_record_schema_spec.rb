@@ -1,9 +1,11 @@
 require 'spec_helper'
 
 require 'models/active_record_schema'
+
 require 'models/active_record_models'
 
 describe 'ActiveRecordSchemaSpec' do
+
   it 'should load in the activerecord sample schema.rb file' do
     expect {
       CreateActiveRecordSchema.up
@@ -29,9 +31,8 @@ describe 'ActiveRecordSchemaSpec' do
       topic = Topic.last
       topic.approved = false
       topic.save
+      approved_topics_count = Topic.group(:approved).count(:author_name)[true]
+      approved_topics_count.should == 3
     end
-
-    approved_topics_count = Topic.group(:approved).count(:author_name)[true]
-    approved_topics_count.should == 3
   end
 end
