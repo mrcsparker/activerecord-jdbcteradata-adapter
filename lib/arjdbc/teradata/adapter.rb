@@ -7,6 +7,8 @@ module ::ArJdbc
       [ /teradata/i, lambda { |cfg, column| column.extend(::ArJdbc::Teradata::Column) } ]
     end
     
+    ## ActiveRecord::ConnectionAdapters::JdbcAdapter
+
     #- jdbc_connection_class
 
     #- jdbc_column_class
@@ -175,6 +177,83 @@ module ::ArJdbc
 
     #- to_sql
 
+    ## ConnectionAdapters::Abstract::SchemaStatements
+
+    #- table_exists?
+
+    #- index_exists?
+    
+    #- columns
+
+    #- column_exists?
+
+    #- create_table
+
+    #- change_table
+    
+    #+ rename_table
+
+    #- drop_table
+    
+    #- add_column
+
+    #- remove_column
+    def remove_column(table_name, *column_names) #:nodoc:
+      for column_name in column_names.flatten
+        execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
+      end
+    end
+
+    #+ change_column
+    # This only works in a VERY limited fashion.  For example, VARCHAR columns
+    # cannot be shortened, one column type cannot be converted to another.
+    def change_column(table_name, column_name, type, options = {}) #:nodoc:
+      change_column_sql = "ALTER TABLE #{quote_table_name(table_name)} " <<
+        "ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit])}"
+      add_column_options!(change_column_sql, options)
+      execute(change_column_sql)
+    end
+
+    #+ change_column_default
+    def change_column_default(table_name, column_name, default) #:nodoc:
+      execute "ALTER TABLE #{quote_table_name(table_name)} " + 
+        "ADD #{quote_column_name(column_name)} DEFAULT #{quote(default)}"
+    end
+
+    #+ rename_column
+    def rename_column(table_name, column_name, new_column_name) #:nodoc:
+      execute "ALTER TABLE #{quote_table_name(table_name)} " <<
+        "RENAME COLUMN #{quote_column_name(column_name)} to #{quote_column_name(new_column_name)}"
+    end
+
+    #- add_index
+
+    #- remove_index
+
+    #- rename_index
+
+    #- index_name
+
+    #- index_name_exists?
+
+    #+ structure_dump
+
+    #- dump_schema_information
+
+    #- initialize_schema_migrations_table
+
+    #- assume_migrated_upto_version
+
+    #- type_to_sql
+    
+    #- add_column_options!
+
+    #- distinct
+
+    #- add_timestamps
+
+    #- remove_timestamps
+
     module Column
       # Maps Teradata types of logical Rails types
       def simplified_type(field_type)
@@ -229,7 +308,7 @@ module ::ArJdbc
     
     IDENTIFIER_LENGTH = 30 # :nodoc:
     
-    # maximum length of Oracle identifiers is 30
+    # maximum length of Teradata identifiers is 30
     def table_alias_length; IDENTIFIER_LENGTH; end # :nodoc:
     def table_name_length;  IDENTIFIER_LENGTH; end # :nodoc:
     def index_name_length;  IDENTIFIER_LENGTH; end # :nodoc:
