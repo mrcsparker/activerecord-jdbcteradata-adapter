@@ -116,7 +116,7 @@ module ::ArJdbc
       output
     end
 
-    #- select 
+    #- select
 
     #- select_rows
 
@@ -195,8 +195,12 @@ module ::ArJdbc
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
       case value
-      when TrueClass  then '1'
-      when FalseClass then '0'
+      when String
+        %Q{'#{quote_string(value)}'}
+      when TrueClass
+        '1'
+      when FalseClass
+        '0'
       else super
       end
     end

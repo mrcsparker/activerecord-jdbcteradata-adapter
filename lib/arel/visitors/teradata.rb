@@ -25,7 +25,6 @@ module Arel
         else
           sql = super
         end
-
         sql
       end
 
@@ -53,9 +52,9 @@ module Arel
         primary_key = @connection.columns(table_name).detect { |column| column.primary }
         return primary_key.name if primary_key
         # Look for an id column.  Return it, without changing case, to cover dbs with a case-sensitive collation.
-        columns(table_name).each { |column| return column.name if column.name =~ /^id$/i }
+        @connection.columns(table_name).each { |column| return column.name if column.name =~ /^id$/i }
         # Give up and provide something which is going to crash almost certainly
-        columns(table_name)[0].name
+        @connection.columns(table_name)[0].name
       end
 
       def add_limit_offset!(sql, options)
