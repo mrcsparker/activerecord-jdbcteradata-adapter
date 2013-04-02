@@ -111,7 +111,7 @@ module ::ArJdbc
       output = nil
       pk = primary_key(table)
       if pk
-        output = execute("SELECT TOP 1 #{pk} FROM #{table} ORDER BY #{pk} DESC").first[pk]
+        output = execute("SELECT TOP 1 #{quote_column_name(pk)} FROM #{quote_table_name(table)} ORDER BY #{quote_column_name(pk)} DESC").first[pk]
       end
       output
     end
