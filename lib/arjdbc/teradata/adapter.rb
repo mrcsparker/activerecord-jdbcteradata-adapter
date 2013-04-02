@@ -180,6 +180,7 @@ module ::ArJdbc
       def simplified_type(field_type)
         case field_type
         when /^timestamp with(?:out)? time zone$/ then :datetime
+        when /byteint/i then :boolean
         else
           super
         end
