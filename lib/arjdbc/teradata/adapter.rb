@@ -184,6 +184,9 @@ module ::ArJdbc
     #- index_exists?
     
     #- columns
+    def columns(table_name, name = nil)
+      @connection.columns_internal(table_name.to_s, nil, database_name)
+    end
 
     #- column_exists?
 
