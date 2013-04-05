@@ -125,6 +125,9 @@ module ::ArJdbc
     #- insert_sql
 
     #- tables
+    def tables
+      @connection.tables(nil, database_name, nil, ["TABLE"])
+    end
 
     #- table_exists?
     def table_exists?(table_name)
