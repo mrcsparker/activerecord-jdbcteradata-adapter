@@ -59,9 +59,9 @@ describe 'Adapter' do
   it '#indexes' do
     id_index = @adapter.indexes('articles').first
     id_index.table.should eq('articles')
-    id_index.name.should == ""
+    id_index.name.should == ''
     id_index.unique.should be_true
-    id_index.columns.should eq([ 'id' ])
+    id_index.columns.should eq(%w(id))
   end
 
   it '#pk_and_sequence_for' do

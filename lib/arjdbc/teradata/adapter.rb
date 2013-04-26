@@ -59,16 +59,16 @@ module ::ArJdbc
       super.merge({
         :primary_key => 'INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 MINVALUE -2147483647 MAXVALUE 1000000000 NO CYCLE)',
         :string => { :name => 'VARCHAR', :limit => 255 },
-        :integer => { :name => "INTEGER" },
-        :float => { :name => "FLOAT" },
-        :decimal => { :name => "DECIMAL" },
-        :datetime => { :name => "TIMESTAMP" },
-        :timestamp => { :name => "TIMESTAMP" },
-        :time => { :name => "TIMESTAMP" },
-        :date => { :name => "DATE" },
-        :binary => { :name => "BLOB" },
-        :boolean => { :name => "BYTEINT" },
-        :raw => { :name => "BYTE" }
+        :integer => { :name => 'INTEGER'},
+        :float => { :name => 'FLOAT'},
+        :decimal => { :name => 'DECIMAL'},
+        :datetime => { :name => 'TIMESTAMP'},
+        :timestamp => { :name => 'TIMESTAMP'},
+        :time => { :name => 'TIMESTAMP'},
+        :date => { :name => 'DATE'},
+        :binary => { :name => 'BLOB'},
+        :boolean => { :name => 'BYTEINT'},
+        :raw => { :name => 'BYTE'}
       })
     end
 
@@ -105,7 +105,7 @@ module ::ArJdbc
     private :_execute
 
     def _table_name_from_insert(sql)
-      sql.split(" ", 4)[2].gsub('"', '').gsub("'", "")
+      sql.split(' ', 4)[2].gsub('"', '').gsub("'", '')
     end
     private :_table_name_from_insert
 
@@ -126,7 +126,7 @@ module ::ArJdbc
 
     #- tables
     def tables
-      @connection.tables(nil, database_name, nil, ["TABLE"])
+      @connection.tables(nil, database_name, nil, %w(TABLE))
     end
 
     #- table_exists?
@@ -140,9 +140,9 @@ module ::ArJdbc
     # TODO: Multiple indexes per column
     IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition # :nodoc:
     def indexes(table_name, name = nil, schema_name = nil)
-      result = select_rows("SELECT" <<
-                           " DatabaseName, TableName, ColumnName, IndexType, IndexName, UniqueFlag" <<
-                           " FROM DBC.Indices" <<
+      result = select_rows('SELECT' <<
+                               ' DatabaseName, TableName, ColumnName, IndexType, IndexName, UniqueFlag' <<
+                               ' FROM DBC.Indices' <<
                            " WHERE TableName = '#{table_name}' AND DatabaseName = '#{database_name}'")
     
       result.map do |row|
@@ -156,7 +156,7 @@ module ::ArJdbc
         columns = []
         columns << idx_column_name
 
-        IndexDefinition.new(idx_table_name, idx_index_name, (idx_unique_flag == "Y"), columns)
+        IndexDefinition.new(idx_table_name, idx_index_name, (idx_unique_flag == 'Y'), columns)
       end
     end
 
@@ -205,9 +205,9 @@ module ::ArJdbc
 
     #- remove_column
     def remove_column(table_name, *column_names) #:nodoc:
-      for column_name in column_names.flatten
+      column_names.flatten.each { |column_name|
         execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
-      end
+      }
     end
 
     #+ change_column
@@ -315,10 +315,14 @@ module ::ArJdbc
     IDENTIFIER_LENGTH = 30 # :nodoc:
     
     # maximum length of Teradata identifiers is 30
-    def table_alias_length; IDENTIFIER_LENGTH; end # :nodoc:
-    def table_name_length;  IDENTIFIER_LENGTH; end # :nodoc:
-    def index_name_length;  IDENTIFIER_LENGTH; end # :nodoc:
-    def column_name_length; IDENTIFIER_LENGTH; end # :nodoc:
+    def table_alias_length; IDENTIFIER_LENGTH
+    end # :nodoc:
+    def table_name_length;  IDENTIFIER_LENGTH
+    end # :nodoc:
+    def index_name_length;  IDENTIFIER_LENGTH
+    end # :nodoc:
+    def column_name_length; IDENTIFIER_LENGTH
+    end # :nodoc:
 
   end
 end

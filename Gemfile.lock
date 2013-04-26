@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    activerecord-jdbcteradata-adapter (0.3.1)
+    activerecord-jdbcteradata-adapter (0.3.2)
       activerecord
       activerecord-jdbc-adapter
       jdbc-teradata

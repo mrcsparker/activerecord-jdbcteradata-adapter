@@ -19,7 +19,7 @@ describe 'AssociationsSpec' do
     purchase_order = PurchaseOrder.new
     purchase_order.product = vendor.products.first
 
-    purchase_order.code = "ORDER1"
+    purchase_order.code = 'ORDER1'
     purchase_order.quantity = 2
     purchase_order.save
 

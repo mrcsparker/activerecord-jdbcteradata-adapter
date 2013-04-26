@@ -88,7 +88,7 @@ class CreateActiveRecordSchema < ActiveRecord::Migration
       t.string :color
     end
 
-    create_table "CamelCase", :force => true do |t|
+    create_table 'CamelCase', :force => true do |t|
       t.string :name
     end
 
@@ -154,10 +154,10 @@ class CreateActiveRecordSchema < ActiveRecord::Migration
       t.integer :client_of
       t.integer :rating, :default => 1
       t.integer :account_id
-      t.string :description, :default => ""
+      t.string :description, :default => ''
     end
 
-    add_index :ar_companies, [:firm_id, :type, :rating, :ruby_type], :name => "company_index"
+    add_index :ar_companies, [:firm_id, :type, :rating, :ruby_type], :name => 'company_index'
 
     create_table :ar_vegetables, :force => true do |t|
       t.string :name
@@ -275,7 +275,7 @@ class CreateActiveRecordSchema < ActiveRecord::Migration
     end
 
     create_table :ar_integer_limits, :force => true do |t|
-      t.integer :"c_int_without_limit"
+      t.integer :'c_int_without_limit'
       (1..8).each do |i|
         t.integer :"c_int_#{i}", :limit => i
       end
