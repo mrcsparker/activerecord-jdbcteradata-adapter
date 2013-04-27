@@ -24,15 +24,15 @@ module Arel
 
   class SelectManager < Arel::TreeManager
     
-    AR_CA_SQLSA_NAME = 'ActiveRecord::ConnectionAdapters::TeradataAdapter'.freeze
+    AR_CA_SQLSA_NAME = 'Teradata'.freeze
     
     # Getting real Ordering objects is very important for us. We need to be able to call #uniq on
     # a colleciton of them reliably as well as using their true object attributes to mutate them
     # to grouping objects for the inner sql during a select statment with an offset/rownumber. So this
     # is here till ActiveRecord & ARel does this for us instead of using SqlLiteral objects.
-    alias :order_without_sqlserver :order
+    alias :order_without_teradata :order
     def order(*expr)
-      return order_without_sqlserver(*expr) unless engine_activerecord_sqlserver_adapter?
+      return order_without_teradata(*expr) unless engine_activerecord_teradata_adapter?
       @ast.orders.concat(expr.map{ |x|
         case x
         when Arel::Attributes::Attribute
@@ -60,9 +60,9 @@ module Arel
 
     # A friendly over ride that allows us to put a special lock object that can have a default or pass
     # custom string hints down. See the visit_Arel_Nodes_LockWithTeradata delegation method.
-    alias :lock_without_sqlserver :lock
+    alias :lock_without_teradata :lock
     def lock(locking=true)
-      if engine_activerecord_sqlserver_adapter?
+      if engine_activerecord_teradata_adapter?
         case locking
         when true
           locking = Arel.sql('WITH(HOLDLOCK, ROWLOCK)')
@@ -73,14 +73,14 @@ module Arel
         @ast.lock = Arel::Nodes::Lock.new(locking)
         self
       else
-        lock_without_sqlserver(locking)
+        lock_without_teradata(locking)
       end
     end
     
     private
     
-    def engine_activerecord_sqlserver_adapter?
-      @engine.connection && @engine.connection.class.name == AR_CA_SQLSA_NAME
+    def engine_activerecord_teradata_adapter?
+      @engine.connection && @engine.connection.adapter_name == AR_CA_SQLSA_NAME
     end
     
   end
@@ -104,13 +104,13 @@ module Arel
       
       def visit_Arel_Nodes_UpdateStatement(o)
         if o.orders.any? && o.limit.nil?
-          o.limit = Nodes::Limit.new(9223372036854775807)
+          o.limit = Nodes::Limit.new(214748364)
         end
         super
       end
 
       def visit_Arel_Nodes_Offset(o)
-        "WHERE [__rnt].[__rn] > (#{visit o.expr})"
+        "WHERE __rnt.__rn > (#{visit o.expr})"
       end
 
       def visit_Arel_Nodes_Limit(o)
@@ -158,7 +158,7 @@ module Arel
         [ ("SELECT" if !windowed),
           (visit(core.set_quantifier) if core.set_quantifier && !windowed),
           (visit(o.limit) if o.limit && !windowed),
-          (projections.map{ |x| v = visit(x); v == "1" ? "1 AS [__wrp]" : v }.join(', ')),
+          (projections.map{ |x| v = visit(x); v == "1" ? "1 AS __wrp" : v }.join(', ')),
           (source_with_lock_for_select_statement(o)),
           ("WHERE #{core.wheres.map{ |x| visit(x) }.join ' AND ' }" unless core.wheres.empty?),
           ("GROUP BY #{groups.map { |x| visit x }.join ', ' }" unless groups.empty?),
@@ -169,17 +169,17 @@ module Arel
 
       def visit_Arel_Nodes_SelectStatementWithOffset(o)
         core = o.cores.first
-        o.limit ||= Arel::Nodes::Limit.new(9223372036854775807)
+        o.limit ||= Arel::Nodes::Limit.new(214748364)
         orders = rowtable_orders(o)
         [ "SELECT",
           (visit(o.limit) if o.limit && !windowed_single_distinct_select_statement?(o)),
           (rowtable_projections(o).map{ |x| visit(x) }.join(', ')),
           "FROM (",
-            "SELECT #{core.set_quantifier ? 'DISTINCT DENSE_RANK()' : 'ROW_NUMBER()'} OVER (ORDER BY #{orders.map{ |x| visit(x) }.join(', ')}) AS [__rn],",
+            "SELECT #{core.set_quantifier ? 'DISTINCT DENSE_RANK()' : 'ROW_NUMBER()'} OVER (ORDER BY #{orders.map{ |x| visit(x) }.join(', ')}) AS __rn,",
             visit_Arel_Nodes_SelectStatementWithOutOffset(o,true),
-          ") AS [__rnt]",
+          ") AS __rnt",
           (visit(o.offset) if o.offset),
-          "ORDER BY [__rnt].[__rn] ASC"
+          "ORDER BY __rnt.__rn ASC"
         ].compact.join ' '
       end
 
@@ -187,18 +187,18 @@ module Arel
         core = o.cores.first
         o.limit.expr = Arel.sql("#{o.limit.expr} + #{o.offset ? o.offset.expr : 0}") if o.limit
         orders = rowtable_orders(o)
-        [ "SELECT COUNT([count]) AS [count_id]",
+        [ "SELECT COUNT(count) AS count_id",
           "FROM (",
             "SELECT",
             (visit(o.limit) if o.limit),
-            "ROW_NUMBER() OVER (ORDER BY #{orders.map{ |x| visit(x) }.join(', ')}) AS [__rn],",
-            "1 AS [count]",
+            "ROW_NUMBER() OVER (ORDER BY #{orders.map{ |x| visit(x) }.join(', ')}) AS __rn,",
+            "1 AS count",
             (source_with_lock_for_select_statement(o)),
             ("WHERE #{core.wheres.map{ |x| visit(x) }.join ' AND ' }" unless core.wheres.empty?),
             ("GROUP BY #{core.groups.map { |x| visit x }.join ', ' }" unless core.groups.empty?),
             (visit(core.having) if core.having),
             ("ORDER BY #{o.orders.map{ |x| visit(x) }.join(', ')}" if !o.orders.empty?),
-          ") AS [__rnt]",
+          ") AS __rnt",
           (visit(o.offset) if o.offset)
         ].compact.join ' '
       end
@@ -325,8 +325,8 @@ module Arel
         j2_tn = j2.match(/JOIN \[(.*)\].*ON/).try(:[],1)
         return unless j1_tn == j2_tn
         on_index = j2.index(' ON ')
-        j2.insert on_index, " AS [#{j2_tn}_crltd]"
-        j2.sub! "[#{j2_tn}].", "[#{j2_tn}_crltd]."
+        j2.insert on_index, " AS #{j2_tn}_crltd"
+        j2.sub! "[#{j2_tn}].", "#{j2_tn}_crltd."
       end
 
       def rowtable_projections(o)
@@ -337,7 +337,7 @@ module Arel
             x.dup.tap do |p|
               p.sub! 'DISTINCT', ''
               p.insert 0, visit(o.limit) if o.limit
-              p.gsub! /\[?#{tn}\]?\./, '[__rnt].'
+              p.gsub! /\"?#{tn}\\"?\./, '__rnt.'
               p.strip!
             end
           end
@@ -346,7 +346,7 @@ module Arel
           core.projections.map do |x|
             x.dup.tap do |p|
               p.sub! 'DISTINCT', "DISTINCT #{visit(o.limit)}".strip if o.limit
-              p.gsub! /\[?#{tn}\]?\./, '[__rnt].'
+              p.gsub! /\"?#{tn}\\"?\./, '__rnt.'
               p.strip!
             end
           end
@@ -355,9 +355,9 @@ module Arel
             Arel.sql visit(x).split(',').map{ |y| y.split(' AS ').last.strip }.join(', ')
           end
         elsif select_primary_key_sql?(o)
-          [Arel.sql("[__rnt].#{quote_column_name(core.projections.first.name)}")]
+          [Arel.sql("__rnt.#{quote_column_name(core.projections.first.name)}")]
         else
-          [Arel.sql('[__rnt].*')]
+          [Arel.sql('__rnt.*')]
         end
       end
 
