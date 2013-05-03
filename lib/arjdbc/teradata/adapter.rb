@@ -41,8 +41,7 @@ module ::ArJdbc
     
     #+ self.arel2_visitors
     def self.arel2_visitors(config)
-      require 'arel/visitors/teradata'
-      {}.tap {|v| %w(teradata jdbcteradata).each {|x| v[x] = ::Arel::Visitors::Teradata } }
+      { 'teradata' => Arel::Visitors::Teradata, 'jdbcteradata' => Arel::Visitors::Teradata }
     end
 
     #- configure_arel2_visitors
@@ -326,3 +325,63 @@ module ::ArJdbc
 
   end
 end
+
+module ActiveRecord
+  module ConnectionAdapters
+    class TeradataColumn < JdbcColumn
+      include ::ArJdbc::MySQL::Column
+
+      def initialize(name, *args)
+        if Hash === name
+          super
+        else
+          super(nil, name, *args)
+        end
+      end
+
+      def call_discovered_column_callbacks(*)
+      end
+    end
+
+    class TeradataAdapter < JdbcAdapter
+      include ::ArJdbc::Teradata
+
+      def initialize(*args)
+        super
+      end
+
+      def jdbc_connection_class(spec)
+        ::ArJdbc::MySQL.jdbc_connection_class
+      end
+
+      def jdbc_column_class
+        TeradataColumn
+      end
+      alias_chained_method :columns, :query_cache, :jdbc_columns
+
+      # some QUOTING caching :
+
+      @@quoted_table_names = {}
+
+      def quote_table_name(name)
+        unless quoted = @@quoted_table_names[name]
+          quoted = super
+          @@quoted_table_names[name] = quoted.freeze
+        end
+        quoted
+      end
+
+      @@quoted_column_names = {}
+
+      def quote_column_name(name)
+        unless quoted = @@quoted_column_names[name]
+          quoted = super
+          @@quoted_column_names[name] = quoted.freeze
+        end
+        quoted
+      end
+    end
+ 
+  end
+end
+

@@ -12,6 +12,8 @@ class ActiveRecord::Base
       config[:port] ||= 1025
       config[:url] ||= "jdbc:teradata://#{config[:host]}/DATABASE=#{config[:database]},DBS_PORT=#{config[:port]},COP=OFF"
       config[:driver] ||= 'com.teradata.jdbc.TeraDriver'
+      config[:adapter_class] = ActiveRecord::ConnectionAdapters::TeradataAdapter
+      config[:adapter_spec] = ::ArJdbc::Teradata
       jdbc_connection(config)
     end
     alias_method :jdbcteradata_connection, :teradata_connection

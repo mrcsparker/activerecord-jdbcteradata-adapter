@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "activerecord-jdbcteradata-adapter"
-  s.version     = "0.3.4"
+  s.version     = "0.3.5"
   s.authors     = ["Chris Parker"]
   s.email       = [ "mrcsparker@gmail.com"]
   s.homepage    = "https://github.com/mrcsparker/activerecord-jdbcteradata-adapter"
