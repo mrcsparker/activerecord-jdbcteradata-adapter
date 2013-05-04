@@ -10,6 +10,9 @@ module ::ArJdbc
     ## ActiveRecord::ConnectionAdapters::JdbcAdapter
 
     #- jdbc_connection_class
+    def self.jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::TeradataJdbcConnection
+    end
 
     #- jdbc_column_class
 
@@ -329,7 +332,7 @@ end
 module ActiveRecord
   module ConnectionAdapters
     class TeradataColumn < JdbcColumn
-      include ::ArJdbc::MySQL::Column
+      include ::ArJdbc::Teradata::Column
 
       def initialize(name, *args)
         if Hash === name
@@ -351,7 +354,7 @@ module ActiveRecord
       end
 
       def jdbc_connection_class(spec)
-        ::ArJdbc::MySQL.jdbc_connection_class
+        ::ArJdbc::Teradata.jdbc_connection_class
       end
 
       def jdbc_column_class
