@@ -1,62 +1,22 @@
 package arjdbc.teradata;
 
-import arjdbc.jdbc.SQLBlock;
 import arjdbc.jdbc.RubyJdbcConnection;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.io.StringReader;
-import java.lang.reflect.InvocationTargetException;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.sql.Array;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.SQLXML;
-import java.sql.Statement;
-import java.sql.Date;
-import java.sql.Time;
-import java.sql.Timestamp;
-import java.sql.Types;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.List;
-
-import org.jruby.Ruby;
-import org.jruby.RubyArray;
-import org.jruby.RubyBignum;
-import org.jruby.RubyBoolean;
-import org.jruby.RubyClass;
-import org.jruby.RubyFixnum;
-import org.jruby.RubyHash;
-import org.jruby.RubyIO;
-import org.jruby.RubyInteger;
-import org.jruby.RubyModule;
-import org.jruby.RubyNumeric;
-import org.jruby.RubyObject;
-import org.jruby.RubyString;
-import org.jruby.RubySymbol;
-import org.jruby.RubyTime;
+import arjdbc.jdbc.SQLBlock;
+import org.jruby.*;
 import org.jruby.anno.JRubyMethod;
-import org.jruby.exceptions.RaiseException;
-import org.jruby.javasupport.JavaEmbedUtils;
-import org.jruby.javasupport.JavaUtil;
-import org.jruby.javasupport.util.RuntimeHelpers;
-import org.jruby.runtime.Arity;
-import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
-import org.jruby.util.ByteList;
 
-/** 
+import java.io.*;
+import java.lang.reflect.InvocationTargetException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.sql.*;
+import java.util.Calendar;
+import java.util.List;
+
+/**
  * Pulled most of this code from RubyJdbcConnection.java master, updated for Teradata,
  * and renamed it so that there wouldn't be any future conflicts.  Once the code
  * in master is ready, this can be removed.
@@ -74,10 +34,10 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     public static RubyClass createTeradataJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        RubyClass clazz = RubyJdbcConnection.getConnectionAdapters(runtime).defineClassUnder("TeradataJdbcConnection",
-                jdbcConnection, Teradata_JDBCCONNECTION_ALLOCATOR);
+        RubyClass clazz = RubyJdbcConnection.getConnectionAdapters(runtime).
+            defineClassUnder("TeradataJdbcConnection", jdbcConnection, Teradata_JDBCCONNECTION_ALLOCATOR);
         clazz.defineAnnotatedMethods(TeradataRubyJdbcConnection.class);
-
+        getConnectionAdapters(runtime).setConstant("TeradataJdbcConnection", clazz); // backwards-compat
         return clazz;
     }
 
@@ -87,159 +47,160 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
         }
     };
 
-    @JRubyMethod(name = "insert_batch", required = 2, rest = false)
-    public IRubyObject insert_batch(final ThreadContext context, IRubyObject recv, final IRubyObject[] args) throws SQLException {
-        final Ruby runtime = recv.getRuntime();
-        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
-                public Object call(final Connection connection) throws SQLException {
-                    final String sql = args[0].convertToString().toString();
-                    IRubyObject binds = args[1];
-
-                    PreparedStatement prepStatement = null;
-                    try {
-                        connection.setAutoCommit(false);
-                        prepStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-                        setTeradataStatementParameters(context, connection, prepStatement, (List) binds);
-                        prepStatement.executeBatch();
-                        connection.commit();
-                        connection.setAutoCommit(true);
-                        return unmarshal_id_result(runtime, prepStatement.getGeneratedKeys());
-                    }
-                    finally { close(prepStatement); }
-                }
-            });
+    @JRubyMethod(name = "print_stuff")
+    public void print_stuff(final ThreadContext context) {
+        System.out.println("Stuff");
     }
-    
-    
-    void setTeradataStatementParameters(final ThreadContext context, 
-                                        final Connection connection, final PreparedStatement statement, 
-                                        final List<?> binds) throws SQLException {
-        
+
+    public IRubyObject insertBatch(final ThreadContext context, final String sql, final List binds) throws SQLException {
         final Ruby runtime = context.getRuntime();
-        
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(final Connection connection) throws SQLException {
+                PreparedStatement prepStatement = null;
+                try {
+                    connection.setAutoCommit(false);
+                    prepStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+                    setTeradataStatementParameters(context, connection, prepStatement, binds);
+                    prepStatement.executeBatch();
+                    connection.commit();
+                    connection.setAutoCommit(true);
+                    return unmarshal_id_result(runtime, prepStatement.getGeneratedKeys());
+                } finally {
+                    close(prepStatement);
+                }
+            }
+        });
+    }
+
+    void setTeradataStatementParameters(final ThreadContext context,
+                                        final Connection connection, final PreparedStatement statement,
+                                        final List binds) throws SQLException {
+
+        final Ruby runtime = context.getRuntime();
+
         for (int i = 0; i < binds.size(); i++) {
             // [ [ column1, param1 ], [ column2, param2 ], ... ]
-            Object param = binds.get(i); IRubyObject column = null;
+            Object param = binds.get(i);
+            IRubyObject column = null;
             if (param.getClass() == RubyArray.class) {
                 final RubyArray _param = (RubyArray) param;
-                column = _param.eltInternal(0); param = _param.eltInternal(1);  
-            }
-            else if (param instanceof List) {
+                column = _param.eltInternal(0);
+                param = _param.eltInternal(1);
+            } else if (param instanceof List) {
                 final List<?> _param = (List<?>) param;
-                column = (IRubyObject) _param.get(0); param = _param.get(1);
-            }
-            else if (param instanceof Object[]) {
+                column = (IRubyObject) _param.get(0);
+                param = _param.get(1);
+            } else if (param instanceof Object[]) {
                 final Object[] _param = (Object[]) param;
-                column = (IRubyObject) _param[0]; param = _param[1];
+                column = (IRubyObject) _param[0];
+                param = _param[1];
             }
-            
+
             final IRubyObject type;
-            if (column != null && ! column.isNil()) {
+            if (column != null && !column.isNil()) {
                 type = column.callMethod(context, "type");
-            }
-            else {
+            } else {
                 type = null;
             }
-            
+
             setTeradataStatementParameter(context, runtime, connection, statement, i + 1, param, type);
             statement.addBatch();
         }
     }
-    
+
     void setTeradataStatementParameter(final ThreadContext context,
-                                       final Ruby runtime, final Connection connection, 
+                                       final Ruby runtime, final Connection connection,
                                        final PreparedStatement statement, final int index,
                                        final Object value, final IRubyObject column) throws SQLException {
-        
+
         final RubySymbol columnType = resolveColumnType(context, runtime, column);
         final int type = jdbcTypeFor(runtime, column, columnType, value);
-        
+
         // TODO pass column with (JDBC) type to methods :
-        
+
         switch (type) {
-        case Types.TINYINT:
-        case Types.SMALLINT:
-        case Types.INTEGER:
-            if (value instanceof RubyBignum) {
-                setTeradataBigIntegerParameter(runtime, connection, statement, index, type, (RubyBignum) value);
-            }
-            setIntegerParameter(runtime, connection, statement, index, type, value);
-            break;
-        case Types.BIGINT:
-            setTeradataBigIntegerParameter(runtime, connection, statement, index, type, value);
-            break;
-        case Types.REAL:
-        case Types.FLOAT:
-        case Types.DOUBLE:
-            setTeradataDoubleParameter(runtime, connection, statement, index, type, value);
-            break;
-        case Types.NUMERIC:
-        case Types.DECIMAL:
-            setTeradataDecimalParameter(runtime, connection, statement, index, type, value);
-            break;
-        case Types.DATE:
-            setDateParameter(runtime, connection, statement, index, type, value);
-            break;
-        case Types.TIME:
-            setTimeParameter(runtime, connection, statement, index, type, value);
-            break;
-        case Types.TIMESTAMP:
-            setTeradataTimestampParameter(runtime, connection, statement, index, type, value);
-            break;
-        case Types.BIT:
-        case Types.BOOLEAN:
-            setTeradataBooleanParameter(runtime, connection, statement, index, type, value);
-            break;
-        case Types.SQLXML:
-            setTeradataXmlParameter(runtime, connection, statement, index, type, value);
-            break;
-        case Types.ARRAY:
-            setTeradataArrayParameter(runtime, connection, statement, index, type, value);
-            break;
-        case Types.JAVA_OBJECT:
-        case Types.OTHER:
-            setTeradataObjectParameter(runtime, connection, statement, index, type, value);
-            break;
-        case Types.BINARY:
-        case Types.VARBINARY:
-        case Types.LONGVARBINARY:
-        case Types.BLOB:
-            setTeradataBlobParameter(runtime, connection, statement, index, type, value);
-            break;
-        case Types.CLOB:
-        case Types.NCLOB: // JDBC 4.0
-            setTeradataClobParameter(runtime, connection, statement, index, type, value);
-            break;
-        case Types.CHAR:
-        case Types.VARCHAR:
-        case Types.NCHAR: // JDBC 4.0
-        case Types.NVARCHAR: // JDBC 4.0
-        default:
-            setTeradataStringParameter(runtime, connection, statement, index, type, value);
+            case Types.TINYINT:
+            case Types.SMALLINT:
+            case Types.INTEGER:
+                if (value instanceof RubyBignum) {
+                    setTeradataBigIntegerParameter(runtime, connection, statement, index, type, (RubyBignum) value);
+                }
+                setTeradataIntegerParameter(runtime, connection, statement, index, type, value);
+                break;
+            case Types.BIGINT:
+                setTeradataBigIntegerParameter(runtime, connection, statement, index, type, value);
+                break;
+            case Types.REAL:
+            case Types.FLOAT:
+            case Types.DOUBLE:
+                setTeradataDoubleParameter(runtime, connection, statement, index, type, value);
+                break;
+            case Types.NUMERIC:
+            case Types.DECIMAL:
+                setTeradataDecimalParameter(runtime, connection, statement, index, type, value);
+                break;
+            case Types.DATE:
+                setDateParameter(runtime, connection, statement, index, type, value);
+                break;
+            case Types.TIME:
+                setTimeParameter(runtime, connection, statement, index, type, value);
+                break;
+            case Types.TIMESTAMP:
+                setTeradataTimestampParameter(runtime, connection, statement, index, type, value);
+                break;
+            case Types.BIT:
+            case Types.BOOLEAN:
+                setTeradataBooleanParameter(runtime, connection, statement, index, type, value);
+                break;
+            case Types.SQLXML:
+                setTeradataXmlParameter(runtime, connection, statement, index, type, value);
+                break;
+            case Types.ARRAY:
+                setTeradataArrayParameter(runtime, connection, statement, index, type, value);
+                break;
+            case Types.JAVA_OBJECT:
+            case Types.OTHER:
+                setTeradataObjectParameter(runtime, connection, statement, index, type, value);
+                break;
+            case Types.BINARY:
+            case Types.VARBINARY:
+            case Types.LONGVARBINARY:
+            case Types.BLOB:
+                setTeradataBlobParameter(runtime, connection, statement, index, type, value);
+                break;
+            case Types.CLOB:
+            case Types.NCLOB: // JDBC 4.0
+                setTeradataClobParameter(runtime, connection, statement, index, type, value);
+                break;
+            case Types.CHAR:
+            case Types.VARCHAR:
+            case Types.NCHAR: // JDBC 4.0
+            case Types.NVARCHAR: // JDBC 4.0
+            default:
+                setTeradataStringParameter(runtime, connection, statement, index, type, value);
         }
     }
 
-    private RubySymbol resolveColumnType(final ThreadContext context, final Ruby runtime, 
+    private RubySymbol resolveColumnType(final ThreadContext context, final Ruby runtime,
                                          final IRubyObject column) {
-        if ( column instanceof RubySymbol ) { // deprecated behavior
+        if (column instanceof RubySymbol) { // deprecated behavior
             return (RubySymbol) column;
         }
-        if ( column instanceof RubyString) { // deprecated behavior
-            if ( runtime.is1_9() ) {
-                return ( (RubyString) column ).intern19();
-            }
-            else {
-                return ( (RubyString) column ).intern();
+        if (column instanceof RubyString) { // deprecated behavior
+            if (runtime.is1_9()) {
+                return ((RubyString) column).intern19();
+            } else {
+                return ((RubyString) column).intern();
             }
         }
 
-        if ( column == null || column.isNil() ) {
-            throw runtime.newArgumentError("nil column passed");   
+        if (column == null || column.isNil()) {
+            throw runtime.newArgumentError("nil column passed");
         }
         return (RubySymbol) column.callMethod(context, "type");
     }
 
-    /* protected */ int jdbcTypeFor(final Ruby runtime, final IRubyObject column, 
+    /* protected */ int jdbcTypeFor(final Ruby runtime, final IRubyObject column,
                                     final RubySymbol columnType, final Object value) throws SQLException {
 
         final String internedType = columnType.asJavaString();
@@ -260,13 +221,12 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
         else return Types.OTHER; // -1 as well as 0 are used in Types
     }
 
-    /* protected */ void setIntegerParameter(final Ruby runtime, final Connection connection, 
-                                             final PreparedStatement statement, final int index, final int type, 
-                                             final Object value) throws SQLException {
+    /* protected */ void setTeradataIntegerParameter(final Ruby runtime, final Connection connection,
+                                                     final PreparedStatement statement, final int index, final int type,
+                                                     final Object value) throws SQLException {
         if (value instanceof IRubyObject) {
-            setIntegerParameter(runtime, connection, statement, index, type, (IRubyObject) value);
-        }
-        else {
+            setTeradataIntegerParameter(runtime, connection, statement, index, type, (IRubyObject) value);
+        } else {
             if (value == null) statement.setNull(index, Types.INTEGER);
             else {
                 statement.setLong(index, ((Number) value).longValue());
@@ -274,51 +234,46 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
         }
     }
 
-    /* protected */ void setIntegerParameter(final Ruby runtime, final Connection connection, 
-                                             final PreparedStatement statement, final int index, final int type, 
-                                             final IRubyObject value) throws SQLException {
+    /* protected */ void setTeradataIntegerParameter(final Ruby runtime, final Connection connection,
+                                                     final PreparedStatement statement, final int index, final int type,
+                                                     final IRubyObject value) throws SQLException {
         if (value.isNil()) statement.setNull(index, Types.INTEGER);
         else {
             if (value instanceof RubyFixnum) {
                 statement.setLong(index, ((RubyFixnum) value).getLongValue());
-            }
-            else {
+            } else {
                 statement.setInt(index, RubyNumeric.fix2int(value));
             }
         }
     }
 
-    /* protected */ void setTeradataBigIntegerParameter(final Ruby runtime, final Connection connection, 
-                                                        final PreparedStatement statement, final int index, final int type, 
+    /* protected */ void setTeradataBigIntegerParameter(final Ruby runtime, final Connection connection,
+                                                        final PreparedStatement statement, final int index, final int type,
                                                         final Object value) throws SQLException {
         if (value instanceof IRubyObject) {
             setTeradataBigIntegerParameter(runtime, connection, statement, index, type, (IRubyObject) value);
-        }
-        else {
+        } else {
             if (value == null) statement.setNull(index, Types.BIGINT);
             else {
                 if (value instanceof BigDecimal) {
                     statement.setBigDecimal(index, (BigDecimal) value);
-                }
-                else if (value instanceof BigInteger) {
+                } else if (value instanceof BigInteger) {
                     setTeradataLongOrDecimalParameter(statement, index, (BigInteger) value);
-                }
-                else {
+                } else {
                     statement.setLong(index, ((Number) value).longValue());
                 }
             }
         }
     }
 
-    /* protected */ void setTeradataBigIntegerParameter(final Ruby runtime, final Connection connection, 
-                                                        final PreparedStatement statement, final int index, final int type, 
+    /* protected */ void setTeradataBigIntegerParameter(final Ruby runtime, final Connection connection,
+                                                        final PreparedStatement statement, final int index, final int type,
                                                         final IRubyObject value) throws SQLException {
         if (value.isNil()) statement.setNull(index, Types.INTEGER);
         else {
             if (value instanceof RubyBignum) {
                 setTeradataLongOrDecimalParameter(statement, index, ((RubyBignum) value).getValue());
-            }
-            else {
+            } else {
                 statement.setLong(index, ((RubyInteger) value).getLongValue());
             }
         }
@@ -327,24 +282,23 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
     private static final BigInteger MAX_LONG = BigInteger.valueOf(Long.MAX_VALUE);
     private static final BigInteger MIN_LONG = BigInteger.valueOf(Long.MIN_VALUE);
 
-    /* protected */ static void setTeradataLongOrDecimalParameter(final PreparedStatement statement, 
-                                                                  final int index, final BigInteger value) throws SQLException {
+    /* protected */
+    static void setTeradataLongOrDecimalParameter(final PreparedStatement statement,
+                                                  final int index, final BigInteger value) throws SQLException {
         if (value.compareTo(MAX_LONG) <= 0 // -1 intValue < MAX_VALUE
-            && value.compareTo(MIN_LONG) >= 0) {
+                && value.compareTo(MIN_LONG) >= 0) {
             statement.setLong(index, value.longValue());
-        }
-        else {
+        } else {
             statement.setBigDecimal(index, new BigDecimal(value));
         }
     }
 
-    /* protected */ void setTeradataDoubleParameter(final Ruby runtime, final Connection connection, 
-                                                    final PreparedStatement statement, final int index, final int type, 
+    /* protected */ void setTeradataDoubleParameter(final Ruby runtime, final Connection connection,
+                                                    final PreparedStatement statement, final int index, final int type,
                                                     final Object value) throws SQLException {
         if (value instanceof IRubyObject) {
             setTeradataDoubleParameter(runtime, connection, statement, index, type, (IRubyObject) value);
-        }
-        else {
+        } else {
             if (value == null) statement.setNull(index, Types.DOUBLE);
             else {
                 statement.setDouble(index, ((Number) value).doubleValue());
@@ -352,8 +306,8 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
         }
     }
 
-    /* protected */ void setTeradataDoubleParameter(final Ruby runtime, final Connection connection, 
-                                                    final PreparedStatement statement, final int index, final int type, 
+    /* protected */ void setTeradataDoubleParameter(final Ruby runtime, final Connection connection,
+                                                    final PreparedStatement statement, final int index, final int type,
                                                     final IRubyObject value) throws SQLException {
         if (value.isNil()) statement.setNull(index, Types.DOUBLE);
         else {
@@ -361,30 +315,27 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
         }
     }
 
-    /* protected */ void setTeradataDecimalParameter(final Ruby runtime, final Connection connection, 
-                                                     final PreparedStatement statement, final int index, final int type, 
+    /* protected */ void setTeradataDecimalParameter(final Ruby runtime, final Connection connection,
+                                                     final PreparedStatement statement, final int index, final int type,
                                                      final Object value) throws SQLException {
         if (value instanceof IRubyObject) {
             setTeradataDecimalParameter(runtime, connection, statement, index, type, (IRubyObject) value);
-        }
-        else {
+        } else {
             if (value == null) statement.setNull(index, Types.DECIMAL);
             else {
                 if (value instanceof BigDecimal) {
                     statement.setBigDecimal(index, (BigDecimal) value);
-                }
-                else if (value instanceof BigInteger) {
+                } else if (value instanceof BigInteger) {
                     setTeradataLongOrDecimalParameter(statement, index, (BigInteger) value);
-                }
-                else {
+                } else {
                     statement.setDouble(index, ((Number) value).doubleValue());
                 }
             }
         }
     }
 
-    /* protected */ void setTeradataDecimalParameter(final Ruby runtime, final Connection connection, 
-                                                     final PreparedStatement statement, final int index, final int type, 
+    /* protected */ void setTeradataDecimalParameter(final Ruby runtime, final Connection connection,
+                                                     final PreparedStatement statement, final int index, final int type,
                                                      final IRubyObject value) throws SQLException {
         if (value.isNil()) statement.setNull(index, Types.DECIMAL);
         else {
@@ -392,50 +343,43 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
             if (value.getMetaClass().getName().indexOf("BigDecimal") != -1) {
                 try { // reflect ((RubyBigDecimal) value).getValue() :
                     BigDecimal decValue = (BigDecimal) value.getClass().
-                        getMethod("getValue", (Class<?>[]) null).
-                        invoke(value, (Object[]) null);
+                            getMethod("getValue", (Class<?>[]) null).
+                            invoke(value, (Object[]) null);
                     statement.setBigDecimal(index, decValue);
-                }
-                catch (NoSuchMethodException e) {
+                } catch (NoSuchMethodException e) {
                     throw new RuntimeException(e);
-                }
-                catch (IllegalAccessException e) {
+                } catch (IllegalAccessException e) {
                     throw new RuntimeException(e);
-                }
-                catch (InvocationTargetException e) {
+                } catch (InvocationTargetException e) {
                     throw new RuntimeException(e.getCause() != null ? e.getCause() : e);
                 }
-            }
-            else {
+            } else {
                 statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
             }
         }
     }
 
-    /* protected */ void setTeradataTimestampParameter(final Ruby runtime, final Connection connection, 
-                                                       final PreparedStatement statement, final int index, final int type, 
+    /* protected */ void setTeradataTimestampParameter(final Ruby runtime, final Connection connection,
+                                                       final PreparedStatement statement, final int index, final int type,
                                                        final Object value) throws SQLException {
         if (value instanceof IRubyObject) {
             setTeradataTimestampParameter(runtime, connection, statement, index, type, (IRubyObject) value);
-        }
-        else {
+        } else {
             if (value == null) statement.setNull(index, Types.TIMESTAMP);
             else {
                 if (value instanceof Timestamp) {
                     statement.setTimestamp(index, (Timestamp) value);
-                }
-                else if (value instanceof java.util.Date) {
+                } else if (value instanceof java.util.Date) {
                     statement.setTimestamp(index, new Timestamp(((java.util.Date) value).getTime()));
-                }
-                else {
+                } else {
                     statement.setTimestamp(index, Timestamp.valueOf(value.toString()));
                 }
             }
         }
     }
 
-    /* protected */ void setTeradataTimestampParameter(final Ruby runtime, final Connection connection, 
-                                                       final PreparedStatement statement, final int index, final int type, 
+    /* protected */ void setTeradataTimestampParameter(final Ruby runtime, final Connection connection,
+                                                       final PreparedStatement statement, final int index, final int type,
                                                        final IRubyObject value) throws SQLException {
         if (value.isNil()) statement.setNull(index, Types.TIMESTAMP);
         else {
@@ -452,8 +396,7 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
                     timestamp.setNanos(micros * 1000); // time.nsec ~ time.usec * 1000
                 }
                 statement.setTimestamp(index, timestamp, calendar);
-            }
-            else {
+            } else {
                 final String stringValue = value.convertToString().toString();
                 // yyyy-[m]m-[d]d hh:mm:ss[.f...]
                 final Timestamp timestamp = Timestamp.valueOf(stringValue);
@@ -462,22 +405,19 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
         }
     }
 
-    /* protected */ void setTimeParameter(final Ruby runtime, final Connection connection, 
-                                          final PreparedStatement statement, final int index, final int type, 
+    /* protected */ void setTimeParameter(final Ruby runtime, final Connection connection,
+                                          final PreparedStatement statement, final int index, final int type,
                                           final Object value) throws SQLException {
         if (value instanceof IRubyObject) {
             setTimeParameter(runtime, connection, statement, index, type, (IRubyObject) value);
-        }
-        else {
+        } else {
             if (value == null) statement.setNull(index, Types.TIME);
             else {
                 if (value instanceof Time) {
                     statement.setTime(index, (Time) value);
-                }
-                else if (value instanceof java.util.Date) {
+                } else if (value instanceof java.util.Date) {
                     statement.setTime(index, new Time(((java.util.Date) value).getTime()));
-                }
-                else { // hh:mm:ss
+                } else { // hh:mm:ss
                     statement.setTime(index, Time.valueOf(value.toString()));
                     // statement.setString(index, value.toString());
                 }
@@ -485,8 +425,8 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
         }
     }
 
-    /* protected */ void setTimeParameter(final Ruby runtime, final Connection connection, 
-                                          final PreparedStatement statement, final int index, final int type, 
+    /* protected */ void setTimeParameter(final Ruby runtime, final Connection connection,
+                                          final PreparedStatement statement, final int index, final int type,
                                           final IRubyObject value) throws SQLException {
         if (value.isNil()) statement.setNull(index, Types.TIME);
         else {
@@ -499,8 +439,7 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
                 Calendar calendar = Calendar.getInstance();
                 calendar.setTime(dateValue);
                 statement.setTime(index, time, calendar);
-            }
-            else {
+            } else {
                 final String stringValue = value.convertToString().toString();
                 final Time time = Time.valueOf(stringValue);
                 statement.setTime(index, time, Calendar.getInstance());
@@ -508,22 +447,19 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
         }
     }
 
-    /* protected */ void setDateParameter(final Ruby runtime, final Connection connection, 
-                                          final PreparedStatement statement, final int index, final int type, 
+    /* protected */ void setDateParameter(final Ruby runtime, final Connection connection,
+                                          final PreparedStatement statement, final int index, final int type,
                                           final Object value) throws SQLException {
         if (value instanceof IRubyObject) {
             setDateParameter(runtime, connection, statement, index, type, (IRubyObject) value);
-        }
-        else {
+        } else {
             if (value == null) statement.setNull(index, Types.DATE);
             else {
                 if (value instanceof Date) {
                     statement.setDate(index, (Date) value);
-                }
-                else if (value instanceof java.util.Date) {
+                } else if (value instanceof java.util.Date) {
                     statement.setDate(index, new Date(((java.util.Date) value).getTime()));
-                }
-                else { // yyyy-[m]m-[d]d
+                } else { // yyyy-[m]m-[d]d
                     statement.setDate(index, Date.valueOf(value.toString()));
                     // statement.setString(index, value.toString());
                 }
@@ -531,8 +467,8 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
         }
     }
 
-    /* protected */ void setDateParameter(final Ruby runtime, final Connection connection, 
-                                          final PreparedStatement statement, final int index, final int type, 
+    /* protected */ void setDateParameter(final Ruby runtime, final Connection connection,
+                                          final PreparedStatement statement, final int index, final int type,
                                           final IRubyObject value) throws SQLException {
         if (value.isNil()) statement.setNull(index, Types.DATE);
         else {
@@ -545,8 +481,7 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
                 Calendar calendar = Calendar.getInstance();
                 calendar.setTime(dateValue);
                 statement.setDate(index, date, calendar);
-            }
-            else {
+            } else {
                 final String stringValue = value.convertToString().toString();
                 final Date date = Date.valueOf(stringValue);
                 statement.setDate(index, date, Calendar.getInstance());
@@ -554,13 +489,12 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
         }
     }
 
-    /* protected */ void setTeradataBooleanParameter(final Ruby runtime, final Connection connection, 
-                                                     final PreparedStatement statement, final int index, final int type, 
+    /* protected */ void setTeradataBooleanParameter(final Ruby runtime, final Connection connection,
+                                                     final PreparedStatement statement, final int index, final int type,
                                                      final Object value) throws SQLException {
         if (value instanceof IRubyObject) {
             setTeradataBooleanParameter(runtime, connection, statement, index, type, (IRubyObject) value);
-        }
-        else {
+        } else {
             if (value == null) statement.setNull(index, Types.BOOLEAN);
             else {
                 statement.setBoolean(index, ((Boolean) value).booleanValue());
@@ -568,8 +502,8 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
         }
     }
 
-    /* protected */ void setTeradataBooleanParameter(final Ruby runtime, final Connection connection, 
-                                                     final PreparedStatement statement, final int index, final int type, 
+    /* protected */ void setTeradataBooleanParameter(final Ruby runtime, final Connection connection,
+                                                     final PreparedStatement statement, final int index, final int type,
                                                      final IRubyObject value) throws SQLException {
         if (value.isNil()) statement.setNull(index, Types.BOOLEAN);
         else {
@@ -578,12 +512,11 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     /* protected */ void setTeradataStringParameter(final Ruby runtime, final Connection connection,
-                                                    final PreparedStatement statement, final int index, final int type, 
+                                                    final PreparedStatement statement, final int index, final int type,
                                                     final Object value) throws SQLException {
         if (value instanceof IRubyObject) {
             setTeradataStringParameter(runtime, connection, statement, index, type, (IRubyObject) value);
-        }
-        else {
+        } else {
             if (value == null) statement.setNull(index, Types.VARCHAR);
             else {
                 statement.setString(index, value.toString());
@@ -592,7 +525,7 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     /* protected */ void setTeradataStringParameter(final Ruby runtime, final Connection connection,
-                                                    final PreparedStatement statement, final int index, final int type, 
+                                                    final PreparedStatement statement, final int index, final int type,
                                                     final IRubyObject value) throws SQLException {
         if (value.isNil()) statement.setNull(index, Types.VARCHAR);
         else {
@@ -601,12 +534,11 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     /* protected */ void setTeradataArrayParameter(final Ruby runtime, final Connection connection,
-                                                   final PreparedStatement statement, final int index, final int type, 
+                                                   final PreparedStatement statement, final int index, final int type,
                                                    final Object value) throws SQLException {
         if (value instanceof IRubyObject) {
             setTeradataArrayParameter(runtime, connection, statement, index, type, (IRubyObject) value);
-        }
-        else {
+        } else {
             if (value == null) statement.setNull(index, Types.ARRAY);
             else {
                 // TODO get array element type name ?!
@@ -617,7 +549,7 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     /* protected */ void setTeradataArrayParameter(final Ruby runtime, final Connection connection,
-                                                   final PreparedStatement statement, final int index, final int type, 
+                                                   final PreparedStatement statement, final int index, final int type,
                                                    final IRubyObject value) throws SQLException {
         if (value.isNil()) statement.setNull(index, Types.ARRAY);
         else {
@@ -628,12 +560,11 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     /* protected */ void setTeradataXmlParameter(final Ruby runtime, final Connection connection,
-                                                 final PreparedStatement statement, final int index, final int type, 
+                                                 final PreparedStatement statement, final int index, final int type,
                                                  final Object value) throws SQLException {
         if (value instanceof IRubyObject) {
             setTeradataXmlParameter(runtime, connection, statement, index, type, (IRubyObject) value);
-        }
-        else {
+        } else {
             if (value == null) statement.setNull(index, Types.SQLXML);
             else {
                 SQLXML xml = connection.createSQLXML();
@@ -644,7 +575,7 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     /* protected */ void setTeradataXmlParameter(final Ruby runtime, final Connection connection,
-                                                 final PreparedStatement statement, final int index, final int type, 
+                                                 final PreparedStatement statement, final int index, final int type,
                                                  final IRubyObject value) throws SQLException {
         if (value.isNil()) statement.setNull(index, Types.SQLXML);
         else {
@@ -655,12 +586,11 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     /* protected */ void setTeradataBlobParameter(final Ruby runtime, final Connection connection,
-                                                  final PreparedStatement statement, final int index, final int type, 
+                                                  final PreparedStatement statement, final int index, final int type,
                                                   final Object value) throws SQLException {
         if (value instanceof IRubyObject) {
             setTeradataBlobParameter(runtime, connection, statement, index, type, (IRubyObject) value);
-        }
-        else {
+        } else {
             if (value == null) statement.setNull(index, Types.BLOB);
             else {
                 statement.setBlob(index, (InputStream) value);
@@ -669,26 +599,24 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     /* protected */ void setTeradataBlobParameter(final Ruby runtime, final Connection connection,
-                                                  final PreparedStatement statement, final int index, final int type, 
+                                                  final PreparedStatement statement, final int index, final int type,
                                                   final IRubyObject value) throws SQLException {
         if (value.isNil()) statement.setNull(index, Types.BLOB);
         else {
             if (value instanceof RubyString) {
                 statement.setBlob(index, new ByteArrayInputStream(((RubyString) value).getBytes()));
-            }
-            else { // assume IO/File
+            } else { // assume IO/File
                 statement.setBlob(index, ((RubyIO) value).getInStream());
             }
         }
     }
 
     /* protected */ void setTeradataClobParameter(final Ruby runtime, final Connection connection,
-                                                  final PreparedStatement statement, final int index, final int type, 
+                                                  final PreparedStatement statement, final int index, final int type,
                                                   final Object value) throws SQLException {
         if (value instanceof IRubyObject) {
             setTeradataClobParameter(runtime, connection, statement, index, type, (IRubyObject) value);
-        }
-        else {
+        } else {
             if (value == null) statement.setNull(index, Types.CLOB);
             else {
                 statement.setClob(index, (Reader) value);
@@ -697,21 +625,20 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     /* protected */ void setTeradataClobParameter(final Ruby runtime, final Connection connection,
-                                                  final PreparedStatement statement, final int index, final int type, 
+                                                  final PreparedStatement statement, final int index, final int type,
                                                   final IRubyObject value) throws SQLException {
         if (value.isNil()) statement.setNull(index, Types.CLOB);
         else {
             if (value instanceof RubyString) {
                 statement.setClob(index, new StringReader(((RubyString) value).decodeString()));
-            }
-            else { // assume IO/File
+            } else { // assume IO/File
                 statement.setClob(index, new InputStreamReader(((RubyIO) value).getInStream()));
             }
         }
     }
 
     /* protected */ void setTeradataObjectParameter(final Ruby runtime, final Connection connection,
-                                                    final PreparedStatement statement, final int index, final int type, 
+                                                    final PreparedStatement statement, final int index, final int type,
                                                     Object value) throws SQLException {
         if (value instanceof IRubyObject) {
             value = ((IRubyObject) value).toJava(Object.class);
@@ -719,7 +646,6 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
         if (value == null) statement.setNull(index, Types.JAVA_OBJECT);
         statement.setObject(index, value);
     }
-
 
 
 }

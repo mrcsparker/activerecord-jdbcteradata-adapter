@@ -1,26 +1,24 @@
 package arjdbc.teradata;
 
-import java.io.IOException;
-
+import arjdbc.jdbc.RubyJdbcConnection;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.RubyModule;
-import org.jruby.RubyObjectAdapter;
-import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.runtime.load.BasicLibraryService;
 
-import arjdbc.jdbc.RubyJdbcConnection;
+import java.io.IOException;
 
 public class TeradataJavaService implements BasicLibraryService {
-    private static RubyObjectAdapter rubyApi;
 
+    @Override
     public boolean basicLoad(final Ruby runtime) throws IOException {
-        RubyClass jdbcConnection = RubyJdbcConnection.createJdbcConnectionClass(runtime);
-        TeradataRubyJdbcConnection.createTeradataJdbcConnectionClass(runtime, jdbcConnection);
-        
-        RubyModule arJdbc = runtime.getOrCreateModule("ArJdbc");
+        RubyClass jdbcConnection = ((RubyModule) runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters")).getClass("JdbcConnection");
 
-        TeradataModule.load(arJdbc);
+        if (jdbcConnection == null) {
+            jdbcConnection = RubyJdbcConnection.createJdbcConnectionClass(runtime);
+        }
+
+        TeradataRubyJdbcConnection.createTeradataJdbcConnectionClass(runtime, jdbcConnection);
 
         return true;
     }
