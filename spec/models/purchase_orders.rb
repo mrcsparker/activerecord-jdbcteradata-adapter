@@ -44,6 +44,22 @@ class CreatePurchaseOrders < ActiveRecord::Migration
   end
 end
 
+class CreateOrderLineItems < ActiveRecord::Migration
+  def self.up
+    create_table :order_line_items do |t|
+      t.integer :purchase_order_id, :null => false
+      t.string :item_name, :null => false
+    end
+
+    add_index :order_line_items, :purchase_order_id, :name => 'idx_line_items_po_id'
+  end
+
+  def self.down
+    drop_table :order_line_items
+  end
+
+end
+
 class Vendor < ActiveRecord::Base
   has_many :products
   has_many :purchase_orders, :through => :products
@@ -54,6 +70,13 @@ class Product < ActiveRecord::Base
   has_many :purchase_orders
 end
 
+class OrderLineItem < ActiveRecord::Base
+  belongs_to :purchase_order
+end
+
 class PurchaseOrder < ActiveRecord::Base
   belongs_to :product
+  has_many :order_line_items, :dependent => :destroy
+  accepts_nested_attributes_for :order_line_items, :allow_destroy => true
 end
+

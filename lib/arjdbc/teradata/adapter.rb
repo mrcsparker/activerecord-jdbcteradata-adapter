@@ -145,13 +145,7 @@ module ::ArJdbc
 
     #- tables
     def tables
-      return false unless table_name
-      schema, table = extract_schema_and_table(table_name.to_s)
-      return false unless table
-
-      schema = database_name unless schema
-
-      @connection.tables(nil, schema, nil, %w(TABLE))
+      @connection.tables(nil, database_name, nil, %w(TABLE))
     end
 
     #- table_exists?
