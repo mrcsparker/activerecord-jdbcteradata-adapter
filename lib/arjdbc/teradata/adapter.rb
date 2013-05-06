@@ -101,10 +101,14 @@ module ::ArJdbc
 
     #- execute
     def _execute(sql, name = nil)
-      result = super
-      self.class.insert?(sql) ? last_insert_id(_table_name_from_insert(sql)) : result
+      if self.class.select?(sql)
+        @connection.execute_query(sql)
+      elsif self.class.insert?(sql)
+        (@connection.execute_insert(sql) or last_insert_id(sql)).to_i
+      else
+        @connection.execute_update(sql)
+      end
     end
-    private :_execute
 
     def _table_name_from_insert(sql)
       sql.split(' ', 4)[2].gsub('"', '').gsub("'", '')

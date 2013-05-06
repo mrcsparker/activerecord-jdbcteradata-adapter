@@ -8,6 +8,7 @@ describe 'AssociationsSpec' do
     CreateProducts.up
     CreatePurchaseOrders.up
     CreateOrderLineItems.up
+    CreateOrderFeelings.up
   end
 
   it 'should create all of the tables' do
@@ -28,7 +29,7 @@ describe 'AssociationsSpec' do
   end
 
   describe '#accepts_nested_attibutes_for' do
-    it 'should be able to create a purchase_order with line_items' do
+    it 'it has_many' do
       vendor = Vendor.new(:name => 'Test vendor', :catch_phrase => 'Hello, world')
       vendor.products.build(:name => 'Test product', :price => 100.00)
       vendor.save
@@ -45,6 +46,44 @@ describe 'AssociationsSpec' do
       purchase_order = PurchaseOrder.create(params[:purchase_order])
       purchase_order.order_line_items.size.should == 1
     end
+
+    it 'it has_one#create' do
+      vendor = Vendor.new(:name => 'Test vendor', :catch_phrase => 'Hello, world')
+      vendor.products.build(:name => 'Test product', :price => 100.00)
+      vendor.save
+
+      params = { :purchase_order => {
+        :product_id => vendor.products.first.id,
+        :code => 'Order 2',
+        :quantity => 1,
+        :order_feeling_attributes =>
+          { :status => 'Wonderful' } 
+        
+      } }
+
+      purchase_order = PurchaseOrder.create(params[:purchase_order])
+      purchase_order.order_feeling.status.should eq('Wonderful')
+    end
+ 
+    it 'it has_one#new' do
+      vendor = Vendor.new(:name => 'Test vendor', :catch_phrase => 'Hello, world')
+      vendor.products.build(:name => 'Test product', :price => 100.00)
+      vendor.save
+
+      params = { :purchase_order => {
+        :product_id => vendor.products.first.id,
+        :code => 'Order 3',
+        :quantity => 1,
+        :order_feeling_attributes =>
+          { :status => 'Wonderful' } 
+        
+      } }
+
+      purchase_order = PurchaseOrder.new(params[:purchase_order])
+      purchase_order.save
+      purchase_order.order_feeling.status.should eq('Wonderful')
+    end
+ 
   end
 
   after(:all) do
@@ -52,5 +91,6 @@ describe 'AssociationsSpec' do
     CreateProducts.down
     CreatePurchaseOrders.down
     CreateOrderLineItems.down
+    CreateOrderFeelings.down
   end
 end
