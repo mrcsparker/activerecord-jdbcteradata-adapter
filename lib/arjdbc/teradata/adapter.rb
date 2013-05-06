@@ -126,26 +126,60 @@ module ::ArJdbc
 
     #- insert_sql
 
+    #= extract_schema_and_table (extra, taken from postgresql adapter)
+    # Extracts the table and schema name from +name+
+    def extract_schema_and_table(name)
+      schema, table = name.split('.', 2)
+
+      unless table # A table was provided without a schema
+        table  = schema
+        schema = nil
+      end
+
+      if name =~ /^"/ # Handle quoted table names
+        table  = name
+        schema = nil
+      end
+      [schema, table]
+    end
+
     #- tables
     def tables
-      @connection.tables(nil, database_name, nil, %w(TABLE))
+      return false unless table_name
+      schema, table = extract_schema_and_table(table_name.to_s)
+      return false unless table
+
+      schema = database_name unless schema
+
+      @connection.tables(nil, schema, nil, %w(TABLE))
     end
 
     #- table_exists?
     def table_exists?(table_name)
       return false unless table_name
-      output = execute("SELECT count(*) as table_count FROM dbc.tables WHERE TableName = '#{table_name}' AND DatabaseName = '#{database_name}'")
-      output.first['table_count'] > 0
+      schema, table = extract_schema_and_table(table_name.to_s)
+      return false unless table
+
+      schema = database_name unless schema
+
+      output = execute("SELECT count(*) as table_count FROM dbc.tables WHERE TableName = '#{table}' AND DatabaseName = '#{schema}'")
+      output.first['table_count'].to_i > 0
     end
 
     #+ indexes
     # TODO: Multiple indexes per column
     IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition # :nodoc:
     def indexes(table_name, name = nil, schema_name = nil)
+      return false unless table_name
+      schema, table = extract_schema_and_table(table_name.to_s)
+      return false unless table
+
+      schema = database_name unless schema
+
       result = select_rows('SELECT' <<
                                ' DatabaseName, TableName, ColumnName, IndexType, IndexName, UniqueFlag' <<
                                ' FROM DBC.Indices' <<
-                           " WHERE TableName = '#{table_name}' AND DatabaseName = '#{database_name}'")
+                           " WHERE TableName = '#{table}' AND DatabaseName = '#{schema}'")
     
       result.map do |row|
         idx_database_name = row[0].to_s.strip
@@ -190,7 +224,13 @@ module ::ArJdbc
     
     #- columns
     def columns(table_name, name = nil)
-      @connection.columns_internal(table_name.to_s, nil, database_name)
+      return false unless table_name
+      schema, table = extract_schema_and_table(table_name.to_s)
+      return false unless table
+
+      schema = database_name unless schema
+
+      @connection.columns_internal(table, nil, schema)
     end
 
     #- column_exists?
