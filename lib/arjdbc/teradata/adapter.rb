@@ -408,7 +408,7 @@ module ActiveRecord
 
       def quote_table_name(name)
         unless quoted = @@quoted_table_names[name]
-          quoted = super
+          quoted = quote_column_name(name).gsub('.', '"."')
           @@quoted_table_names[name] = quoted.freeze
         end
         quoted
