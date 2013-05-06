@@ -10,7 +10,7 @@ class ActiveRecord::Base
       config[:username] ||= Java::JavaLang::System.get_property('user.name')
       config[:host] ||= 'localhost'
       config[:port] ||= 1025
-      config[:url] ||= "jdbc:teradata://#{config[:host]}/DATABASE=#{config[:database]},DBS_PORT=#{config[:port]},COP=OFF,tmode=ANSI,charset=UTF8"
+      config[:url] ||= "jdbc:teradata://#{config[:host]}/DATABASE=#{config[:database]},DBS_PORT=#{config[:port]},COP=OFF,tmode=Teradata,charset=UTF8"
       config[:driver] ||= 'com.teradata.jdbc.TeraDriver'
       config[:adapter_class] = ActiveRecord::ConnectionAdapters::TeradataAdapter
       config[:adapter_spec] = ::ArJdbc::Teradata
