@@ -12,7 +12,8 @@ class ActiveRecord::Base
       config[:port] ||= 1025
       config[:tmode] ||= 'ANSI' # ANSI, Teradata, DEFAULT
       config[:charset] ||= 'UTF8'
-      config[:url] ||= "jdbc:teradata://#{config[:host]}/DATABASE=#{config[:database]},DBS_PORT=#{config[:port]},COP=OFF,tmode=#{config[:tmode]},charset=#{config[:charset]}"
+      config[:cop] ||= 'OFF'
+      config[:url] ||= "jdbc:teradata://#{config[:host]}/DATABASE=#{config[:database]},DBS_PORT=#{config[:port]},COP=#{config[:cop]},tmode=#{config[:tmode]},charset=#{config[:charset]}"
       config[:driver] ||= 'com.teradata.jdbc.TeraDriver'
       config[:adapter_class] = ActiveRecord::ConnectionAdapters::TeradataAdapter
       config[:adapter_spec] = ::ArJdbc::Teradata
