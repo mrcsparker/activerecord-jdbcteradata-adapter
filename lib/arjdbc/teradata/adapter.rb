@@ -79,23 +79,6 @@ module ::ArJdbc
       @connection.config[:database]
     end
 
-    def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-      if pk && use_insert_returning? # && id_value.nil?
-        select_value("#{to_sql(sql, binds)} RETURNING #{quote_column_name(pk)}")
-      else
-        execute(sql, name, binds) # super
-        unless id_value
-            id_value = last_insert_id(table_ref, sequence_name)
-        end
-        id_value
-      end
-    end
-
-    # # taken from rails postgresql_adapter.rb
-     def sql_for_insert(sql, pk, id_value, sequence_name, binds)
-       id_value = 4 if id_value.nil?
-       [ sql, binds ]
-     end
     #- native_sql_to_type
 
     #- active?
