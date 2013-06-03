@@ -6,7 +6,7 @@ module ::ArJdbc
     def self.column_selector
       [ /teradata/i, lambda { |cfg, column| column.extend(::ArJdbc::Teradata::Column) } ]
     end
-    
+
     ## ActiveRecord::ConnectionAdapters::JdbcAdapter
 
     #- jdbc_connection_class
@@ -17,7 +17,7 @@ module ::ArJdbc
     #- jdbc_column_class
 
     #- jdbc_connection
-   
+
     #- adapter_spec
 
     #+ modify_types
@@ -41,7 +41,7 @@ module ::ArJdbc
     end
 
     #- self.visitor_for
-    
+
     #+ self.arel2_visitors
     def self.arel2_visitors(config)
       { 'teradata' => Arel::Visitors::Teradata, 'jdbcteradata' => Arel::Visitors::Teradata }
@@ -125,6 +125,11 @@ module ::ArJdbc
     end
 
     #- select
+    def select(sql, *rest)
+    # TJC - Teradata does not like "= NULL", "!= NULL", or "<> NULL".
+    # TJC - Also does not like != so transforming that to <>
+       execute(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL").gsub("!=","<>"), *rest)
+    end
 
     #- select_rows
 
@@ -178,7 +183,7 @@ module ::ArJdbc
                                ' DatabaseName, TableName, ColumnName, IndexType, IndexName, UniqueFlag' <<
                                ' FROM DBC.Indices' <<
                            " WHERE TableName = '#{table}' AND DatabaseName = '#{schema}'")
-    
+
       result.map do |row|
         idx_database_name = row[0].to_s.strip
         idx_table_name = row[1].to_s.strip
@@ -207,7 +212,7 @@ module ::ArJdbc
     #- write_large_object
 
     #- pk_and_sequence_for
-    
+
     #- primary_key
 
     #- primary_keys
@@ -219,7 +224,7 @@ module ::ArJdbc
     #- table_exists?
 
     #- index_exists?
-    
+
     #- columns
     def columns(table_name, name = nil)
       return false unless table_name
@@ -236,11 +241,11 @@ module ::ArJdbc
     #- create_table
 
     #- change_table
-    
+
     #+ rename_table
 
     #- drop_table
-    
+
     #- add_column
 
     #- remove_column
@@ -262,7 +267,7 @@ module ::ArJdbc
 
     #+ change_column_default
     def change_column_default(table_name, column_name, default) #:nodoc:
-      execute "ALTER TABLE #{quote_table_name(table_name)} " + 
+      execute "ALTER TABLE #{quote_table_name(table_name)} " +
         "ADD #{quote_column_name(column_name)} DEFAULT #{quote(default)}"
     end
 
@@ -291,7 +296,7 @@ module ::ArJdbc
     #- assume_migrated_upto_version
 
     #- type_to_sql
-    
+
     #- add_column_options!
 
     #- distinct
@@ -351,9 +356,9 @@ module ::ArJdbc
       index_name, index_type, index_columns = add_index_options(table_name, column_name, options)
       execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} (#{index_columns}) ON #{quote_table_name(table_name)}"
     end
-    
+
     IDENTIFIER_LENGTH = 30 # :nodoc:
-    
+
     # maximum length of Teradata identifiers is 30
     def table_alias_length; IDENTIFIER_LENGTH
     end # :nodoc:
@@ -422,7 +427,7 @@ module ActiveRecord
         quoted
       end
     end
- 
+
   end
 end
 
