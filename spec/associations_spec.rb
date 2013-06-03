@@ -13,6 +13,7 @@ describe 'AssociationsSpec' do
 
   it 'should create all of the tables' do
     vendor = Vendor.new(:name => 'Test vendor', :catch_phrase => 'Hello, world')
+    puts vendor.inspect
     vendor.products.build(:name => 'Test product', :price => 100.00)
     vendor.save
 
@@ -38,8 +39,8 @@ describe 'AssociationsSpec' do
         :product_id => vendor.products.first.id,
         :code => 'Order 2',
         :quantity => 1,
-        :order_line_items_attributes => [ 
-          { :item_name => 'Test item' } 
+        :order_line_items_attributes => [
+          { :item_name => 'Test item' }
         ]
       } }
 
@@ -57,14 +58,14 @@ describe 'AssociationsSpec' do
         :code => 'Order 2',
         :quantity => 1,
         :order_feeling_attributes =>
-          { :status => 'Wonderful' } 
-        
+          { :status => 'Wonderful' }
+
       } }
 
       purchase_order = PurchaseOrder.create(params[:purchase_order])
       purchase_order.order_feeling.status.should eq('Wonderful')
     end
- 
+
     it 'it has_one#new' do
       vendor = Vendor.new(:name => 'Test vendor', :catch_phrase => 'Hello, world')
       vendor.products.build(:name => 'Test product', :price => 100.00)
@@ -75,15 +76,15 @@ describe 'AssociationsSpec' do
         :code => 'Order 3',
         :quantity => 1,
         :order_feeling_attributes =>
-          { :status => 'Wonderful' } 
-        
+          { :status => 'Wonderful' }
+
       } }
 
       purchase_order = PurchaseOrder.new(params[:purchase_order])
       purchase_order.save
       purchase_order.order_feeling.status.should eq('Wonderful')
     end
- 
+
   end
 
   after(:all) do
