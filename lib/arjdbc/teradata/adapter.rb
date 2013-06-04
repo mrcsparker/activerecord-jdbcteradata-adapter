@@ -173,7 +173,6 @@ module ::ArJdbc
 
       schema = database_name unless schema
       output = execute("SELECT count(*) as table_count FROM dbc.tables WHERE TableName = '#{table}' AND DatabaseName = '#{schema}'")
-
       output.first['table_count'].to_i > 0
     end
 
@@ -238,9 +237,7 @@ module ::ArJdbc
       return false unless table_name
       schema, table = extract_schema_and_table(table_name.to_s)
       return false unless table
-
       schema = database_name unless schema
-
       @connection.columns_internal(table, nil, schema)
     end
 
