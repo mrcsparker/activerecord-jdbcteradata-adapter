@@ -238,6 +238,9 @@ module ::ArJdbc
       return false unless table_name
       schema, table = extract_schema_and_table(table_name.to_s)
       return false unless table
+
+      schema = database_name unless schema
+
       @connection.columns_internal(table, nil, schema)
     end
 
