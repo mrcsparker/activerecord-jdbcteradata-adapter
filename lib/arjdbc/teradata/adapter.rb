@@ -24,7 +24,7 @@ module ::ArJdbc
     def modify_types(types)
       super(types)
       types[:primary_key] = 'INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 MINVALUE -2147483647 MAXVALUE 1000000000 NO CYCLE)',
-          types[:string][:limit] = 255
+      types[:string][:limit] = 255
       types[:integer][:limit] = nil
       types
     end
@@ -127,6 +127,11 @@ module ::ArJdbc
     end
 
     #- select
+    def select(sql, *rest)
+    # TJC - Teradata does not like "= NULL", "!= NULL", or "<> NULL".
+    # TJC - Also does not like != so transforming that to <>
+       execute(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL").gsub("!=","<>"), *rest)
+    end
 
     #- select_rows
 
