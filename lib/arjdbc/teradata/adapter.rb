@@ -104,7 +104,15 @@ module ::ArJdbc
     #- execute
     def _execute(sql, name = nil)
       if self.class.select?(sql)
-        @connection.execute_query(sql)
+        result = @connection.execute_query(sql)
+        result.map! do |r|
+          new_hash = {}
+          r.each_pair do |k, v|
+            new_hash.merge!({k.downcase => v})
+          end
+          new_hash
+        end
+        result
       elsif self.class.insert?(sql)
         (@connection.execute_insert(sql) or last_insert_id(sql)).to_i
       else
@@ -378,6 +386,8 @@ module ActiveRecord
       include ::ArJdbc::Teradata::Column
 
       def initialize(name, *args)
+        args[0].downcase!
+
         if Hash === name
           super
         else
