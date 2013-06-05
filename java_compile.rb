@@ -19,7 +19,7 @@ directory_name = 'classes'
 cmd = "mkdir #{directory_name}"
 system cmd
 
-cmd = "javac -cp #{CLASSPATH} #{Dir['src/java/**/*.java'].join(' ')} -d #{directory_name}"
+cmd = "javac -source 1.5 -target 1.5 -cp #{CLASSPATH} #{Dir['src/java/**/*.java'].join(' ')} -d #{directory_name}"
 puts cmd
 system cmd
 

@@ -109,6 +109,28 @@ describe 'Adapter' do
       Shirt.where(:color => 'red', :status_code => 'very red').count.should eq(1)
     end
 
+    it 'should be able to use lowercase attributes when ActiveRecord::ConnectionAdapters::TeradataAdapter.lowercase_schema_reflection = true' do
+      ActiveRecord::ConnectionAdapters::TeradataAdapter.lowercase_schema_reflection = true
+
+      shirt = Shirt.new
+      shirt.color = 'orange'
+      shirt.status_code = 'very orange'
+      shirt.save
+
+      Shirt.where(:color => 'orange', :status_code => 'very orange').count.should eq(1)
+    end
+
+    it 'should be able to use uppercase attributes when ActiveRecord::ConnectionAdapters::TeradataAdapter.lowercase_schema_reflection = false' do
+      ActiveRecord::ConnectionAdapters::TeradataAdapter.lowercase_schema_reflection = false
+
+      shirt = Shirt.new
+      shirt.COLOR = 'yellow'
+      shirt.STATUS_CODE = 'somewhat yellow'
+      shirt.save
+
+      Shirt.where(:COLOR => 'yellow', :STATUS_CODE => 'somewhat yellow').count.should eq(1)
+    end
+
     after(:each) do
       CreateShirts.down
     end
