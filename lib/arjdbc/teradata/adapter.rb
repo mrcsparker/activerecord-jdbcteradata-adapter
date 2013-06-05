@@ -6,7 +6,7 @@ module ::ArJdbc
     def self.column_selector
       [ /teradata/i, lambda { |cfg, column| column.extend(::ArJdbc::Teradata::Column) } ]
     end
-    
+
     ## ActiveRecord::ConnectionAdapters::JdbcAdapter
 
     #- jdbc_connection_class
@@ -17,14 +17,14 @@ module ::ArJdbc
     #- jdbc_column_class
 
     #- jdbc_connection
-   
+
     #- adapter_spec
 
     #+ modify_types
     def modify_types(types)
       super(types)
       types[:primary_key] = 'INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 MINVALUE -2147483647 MAXVALUE 1000000000 NO CYCLE)',
-      types[:string][:limit] = 255
+          types[:string][:limit] = 255
       types[:integer][:limit] = nil
       types
     end
@@ -41,7 +41,7 @@ module ::ArJdbc
     end
 
     #- self.visitor_for
-    
+
     #+ self.arel2_visitors
     def self.arel2_visitors(config)
       { 'teradata' => Arel::Visitors::Teradata, 'jdbcteradata' => Arel::Visitors::Teradata }
@@ -58,20 +58,22 @@ module ::ArJdbc
 
     #+ native_database_types
     def native_database_types
-      super.merge({
-        :primary_key => 'INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 MINVALUE -2147483647 MAXVALUE 1000000000 NO CYCLE)',
-        :string => { :name => 'VARCHAR', :limit => 255 },
-        :integer => { :name => 'INTEGER'},
-        :float => { :name => 'FLOAT'},
-        :decimal => { :name => 'DECIMAL'},
-        :datetime => { :name => 'TIMESTAMP'},
-        :timestamp => { :name => 'TIMESTAMP'},
-        :time => { :name => 'TIMESTAMP'},
-        :date => { :name => 'DATE'},
-        :binary => { :name => 'BLOB'},
-        :boolean => { :name => 'BYTEINT'},
-        :raw => { :name => 'BYTE'}
-      })
+      super.merge(
+          {
+              :primary_key => 'INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 MINVALUE -2147483647 MAXVALUE 1000000000 NO CYCLE)',
+              :string => { :name => 'VARCHAR', :limit => 255 },
+              :integer => { :name => 'INTEGER'},
+              :float => { :name => 'FLOAT'},
+              :decimal => { :name => 'DECIMAL'},
+              :datetime => { :name => 'TIMESTAMP'},
+              :timestamp => { :name => 'TIMESTAMP'},
+              :time => { :name => 'TIMESTAMP'},
+              :date => { :name => 'DATE'},
+              :binary => { :name => 'BLOB'},
+              :boolean => { :name => 'BYTEINT'},
+              :raw => { :name => 'BYTE'}
+          }
+      )
     end
 
     #- database_name
@@ -177,13 +179,11 @@ module ::ArJdbc
       result = select_rows('SELECT' <<
                                ' DatabaseName, TableName, ColumnName, IndexType, IndexName, UniqueFlag' <<
                                ' FROM DBC.Indices' <<
-                           " WHERE TableName = '#{table}' AND DatabaseName = '#{schema}'")
-    
+                               " WHERE TableName = '#{table}' AND DatabaseName = '#{schema}'")
+
       result.map do |row|
-        idx_database_name = row[0].to_s.strip
         idx_table_name = row[1].to_s.strip
         idx_column_name = row[2].to_s.strip
-        idx_index_type = row[3].to_s.strip
         idx_index_name = row[4].to_s.strip
         idx_unique_flag = row[5].to_s.strip
 
@@ -207,7 +207,7 @@ module ::ArJdbc
     #- write_large_object
 
     #- pk_and_sequence_for
-    
+
     #- primary_key
 
     #- primary_keys
@@ -219,7 +219,7 @@ module ::ArJdbc
     #- table_exists?
 
     #- index_exists?
-    
+
     #- columns
     def columns(table_name, name = nil)
       return false unless table_name
@@ -236,11 +236,11 @@ module ::ArJdbc
     #- create_table
 
     #- change_table
-    
+
     #+ rename_table
 
     #- drop_table
-    
+
     #- add_column
 
     #- remove_column
@@ -255,21 +255,21 @@ module ::ArJdbc
     # cannot be shortened, one column type cannot be converted to another.
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
       change_column_sql = "ALTER TABLE #{quote_table_name(table_name)} " <<
-        "ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit])}"
+          "ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit])}"
       add_column_options!(change_column_sql, options)
       execute(change_column_sql)
     end
 
     #+ change_column_default
     def change_column_default(table_name, column_name, default) #:nodoc:
-      execute "ALTER TABLE #{quote_table_name(table_name)} " + 
-        "ADD #{quote_column_name(column_name)} DEFAULT #{quote(default)}"
+      execute "ALTER TABLE #{quote_table_name(table_name)} " +
+                  "ADD #{quote_column_name(column_name)} DEFAULT #{quote(default)}"
     end
 
     #+ rename_column
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
       execute "ALTER TABLE #{quote_table_name(table_name)} " <<
-        "RENAME COLUMN #{quote_column_name(column_name)} to #{quote_column_name(new_column_name)}"
+                  "RENAME COLUMN #{quote_column_name(column_name)} to #{quote_column_name(new_column_name)}"
     end
 
     #- add_index
@@ -291,7 +291,7 @@ module ::ArJdbc
     #- assume_migrated_upto_version
 
     #- type_to_sql
-    
+
     #- add_column_options!
 
     #- distinct
@@ -304,10 +304,10 @@ module ::ArJdbc
       # Maps Teradata types of logical Rails types
       def simplified_type(field_type)
         case field_type
-        when /^timestamp with(?:out)? time zone$/ then :datetime
-        when /byteint/i then :boolean
-        else
-          super
+          when /^timestamp with(?:out)? time zone$/ then :datetime
+          when /byteint/i then :boolean
+          else
+            super
         end
       end
     end # column
@@ -321,13 +321,13 @@ module ::ArJdbc
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
       case value
-      when String
-        %Q{'#{quote_string(value)}'}
-      when TrueClass
-        '1'
-      when FalseClass
-        '0'
-      else super
+        when String
+          %Q{'#{quote_string(value)}'}
+        when TrueClass
+          '1'
+        when FalseClass
+          '0'
+        else super
       end
     end
 
@@ -351,9 +351,9 @@ module ::ArJdbc
       index_name, index_type, index_columns = add_index_options(table_name, column_name, options)
       execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} (#{index_columns}) ON #{quote_table_name(table_name)}"
     end
-    
+
     IDENTIFIER_LENGTH = 30 # :nodoc:
-    
+
     # maximum length of Teradata identifiers is 30
     def table_alias_length; IDENTIFIER_LENGTH
     end # :nodoc:
@@ -422,7 +422,7 @@ module ActiveRecord
         quoted
       end
     end
- 
+
   end
 end
 
