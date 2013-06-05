@@ -111,7 +111,7 @@ module ::ArJdbc
             new_hash.merge!({k.downcase => v})
           end
           new_hash
-        end
+        end if self.class.lowercase_schema_reflection
         result
       elsif self.class.insert?(sql)
         (@connection.execute_insert(sql) or last_insert_id(sql)).to_i
@@ -190,8 +190,8 @@ module ::ArJdbc
       schema = database_name unless schema
 
       result = select_rows('SELECT' <<
-                               ' DatabaseName, TableName, ColumnName, IndexType, IndexName, UniqueFlag' <<
-                               ' FROM DBC.Indices' <<
+                           ' DatabaseName, TableName, ColumnName, IndexType, IndexName, UniqueFlag' <<
+                           ' FROM DBC.Indices' <<
                            " WHERE TableName = '#{table}' AND DatabaseName = '#{schema}'")
 
       result.map do |row|
@@ -386,9 +386,11 @@ module ActiveRecord
       include ::ArJdbc::Teradata::Column
 
       def initialize(name, *args)
-        args[0].downcase!
 
         if Hash === name
+          if name.has_key? :adapter_class
+            args[0].downcase! if name[:adapter_class].lowercase_schema_reflection
+          end
           super
         else
           super(nil, name, *args)
@@ -401,6 +403,8 @@ module ActiveRecord
 
     class TeradataAdapter < JdbcAdapter
       include ::ArJdbc::Teradata
+
+      cattr_accessor :lowercase_schema_reflection
 
       def initialize(*args)
         super
