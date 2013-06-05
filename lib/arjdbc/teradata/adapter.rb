@@ -184,7 +184,7 @@ module ::ArJdbc
       result = select_rows('SELECT' <<
                                ' DatabaseName, TableName, ColumnName, IndexType, IndexName, UniqueFlag' <<
                                ' FROM DBC.Indices' <<
-                               " WHERE TableName = '#{table}' AND DatabaseName = '#{schema}'")
+                           " WHERE TableName = '#{table}' AND DatabaseName = '#{schema}'")
 
       result.map do |row|
         idx_table_name = row[1].to_s.strip
@@ -268,7 +268,7 @@ module ::ArJdbc
     #+ change_column_default
     def change_column_default(table_name, column_name, default) #:nodoc:
       execute "ALTER TABLE #{quote_table_name(table_name)} " +
-                  "ADD #{quote_column_name(column_name)} DEFAULT #{quote(default)}"
+        "ADD #{quote_column_name(column_name)} DEFAULT #{quote(default)}"
     end
 
     #+ rename_column
