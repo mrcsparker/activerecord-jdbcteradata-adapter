@@ -3,6 +3,25 @@ require 'arjdbc/mssql/limit_helpers'
 module ::ArJdbc
   module Teradata
 
+      require 'arjdbc/jdbc/serialized_attributes_helper'
+      ActiveRecord::Base.class_eval do
+        def after_save_with_teradata_lob
+          lob_columns = self.class.columns.select { |c| c.sql_type =~ /blob|clob/i }
+          lob_columns.each do |column|
+            value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
+            next if value.nil? # already set NULL
+
+            self.class.connection.write_large_object(
+              column.type == :binary, column.name,
+              self.class.table_name,
+              self.class.primary_key,
+              self.class.connection.quote(id), value
+            )
+          end
+        end
+      end
+    ActiveRecord::Base.after_save :after_save_with_teradata_lob
+
     def self.column_selector
       [ /teradata/i, lambda { |cfg, column| column.extend(::ArJdbc::Teradata::Column) } ]
     end
