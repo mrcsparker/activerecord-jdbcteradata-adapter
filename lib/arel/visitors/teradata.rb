@@ -48,7 +48,7 @@ module Arel
             d = s =~ /(ASC|DESC)\Z/i ? $1.upcase : nil
             e = d.nil? ? s : s.mb_chars[0...-d.length].strip
             e = Arel.sql(e)
-            d && d == "DESC" ? Arel::Nodes::Descending.new(e) : Arel::Nodes::Ascending.new(e)
+            d && d == 'DESC' ? Arel::Nodes::Descending.new(e) : Arel::Nodes::Ascending.new(e)
           end
         else
           e = Arel.sql(x.to_s)
@@ -155,10 +155,10 @@ module Arel
         elsif top_one_everything_for_through_join?(o)
           projections = projections.map { |x| projection_without_expression(x) }
         end
-        [ ("SELECT" if !windowed),
+        [ ('SELECT' if !windowed),
           (visit(core.set_quantifier) if core.set_quantifier && !windowed),
           (visit(o.limit) if o.limit && !windowed),
-          (projections.map{ |x| v = visit(x); v == "1" ? "1 AS __wrp" : v }.join(', ')),
+          (projections.map{ |x| v = visit(x); v == '1' ? '1 AS __wrp' : v }.join(', ')),
           (source_with_lock_for_select_statement(o)),
           ("WHERE #{core.wheres.map{ |x| visit(x) }.join ' AND ' }" unless core.wheres.empty?),
           ("GROUP BY #{groups.map { |x| visit x }.join ', ' }" unless groups.empty?),
@@ -171,15 +171,15 @@ module Arel
         core = o.cores.first
         o.limit ||= Arel::Nodes::Limit.new(214748364)
         orders = rowtable_orders(o)
-        [ "SELECT",
+        [ 'SELECT',
           (visit(o.limit) if o.limit && !windowed_single_distinct_select_statement?(o)),
           (rowtable_projections(o).map{ |x| visit(x) }.join(', ')),
-          "FROM (",
+          'FROM (',
             "SELECT #{core.set_quantifier ? 'DISTINCT DENSE_RANK()' : 'ROW_NUMBER()'} OVER (ORDER BY #{orders.map{ |x| visit(x) }.join(', ')}) AS __rn,",
             visit_Arel_Nodes_SelectStatementWithOutOffset(o,true),
-          ") AS __rnt",
+            ') AS __rnt',
           (visit(o.offset) if o.offset),
-          "ORDER BY __rnt.__rn ASC"
+          'ORDER BY __rnt.__rn ASC'
         ].compact.join ' '
       end
 
@@ -187,18 +187,18 @@ module Arel
         core = o.cores.first
         o.limit.expr = Arel.sql("#{o.limit.expr} + #{o.offset ? o.offset.expr : 0}") if o.limit
         orders = rowtable_orders(o)
-        [ "SELECT COUNT(count) AS count_id",
-          "FROM (",
-            "SELECT",
+        [ 'SELECT COUNT(count) AS count_id',
+          'FROM (',
+          'SELECT',
             (visit(o.limit) if o.limit),
             "ROW_NUMBER() OVER (ORDER BY #{orders.map{ |x| visit(x) }.join(', ')}) AS __rn,",
-            "1 AS count",
+            '1 AS count',
             (source_with_lock_for_select_statement(o)),
             ("WHERE #{core.wheres.map{ |x| visit(x) }.join ' AND ' }" unless core.wheres.empty?),
             ("GROUP BY #{core.groups.map { |x| visit x }.join ', ' }" unless core.groups.empty?),
             (visit(core.having) if core.having),
             ("ORDER BY #{o.orders.map{ |x| visit(x) }.join(', ')}" if !o.orders.empty?),
-          ") AS __rnt",
+            ') AS __rnt',
           (visit(o.offset) if o.offset)
         ].compact.join ' '
       end
@@ -254,7 +254,7 @@ module Arel
       end
       
       def single_distinct_select_everything_statement?(o)
-        single_distinct_select_statement?(o) && visit(o.cores.first.projections.first).ends_with?(".*")
+        single_distinct_select_statement?(o) && visit(o.cores.first.projections.first).ends_with?('.*')
       end
       
       def top_one_everything_for_through_join?(o)

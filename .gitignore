@@ -17,3 +17,6 @@ tmp
 .yardoc
 _yardoc
 doc/
+lib/arjdbc/teradata/teradata_java.jar
+.idea/
+classes/

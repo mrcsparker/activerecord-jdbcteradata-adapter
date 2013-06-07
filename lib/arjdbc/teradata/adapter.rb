@@ -77,20 +77,22 @@ module ::ArJdbc
 
     #+ native_database_types
     def native_database_types
-      super.merge({
-        :primary_key => 'INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 MINVALUE -2147483647 MAXVALUE 1000000000 NO CYCLE)',
-        :string => { :name => 'VARCHAR', :limit => 255 },
-        :integer => { :name => 'INTEGER'},
-        :float => { :name => 'FLOAT'},
-        :decimal => { :name => 'DECIMAL'},
-        :datetime => { :name => 'TIMESTAMP'},
-        :timestamp => { :name => 'TIMESTAMP'},
-        :time => { :name => 'TIMESTAMP'},
-        :date => { :name => 'DATE'},
-        :binary => { :name => 'BLOB'},
-        :boolean => { :name => 'BYTEINT'},
-        :raw => { :name => 'BYTE'}
-      })
+      super.merge(
+          {
+              :primary_key => 'INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 MINVALUE -2147483647 MAXVALUE 1000000000 NO CYCLE)',
+              :string => { :name => 'VARCHAR', :limit => 255 },
+              :integer => { :name => 'INTEGER'},
+              :float => { :name => 'FLOAT'},
+              :decimal => { :name => 'DECIMAL'},
+              :datetime => { :name => 'TIMESTAMP'},
+              :timestamp => { :name => 'TIMESTAMP'},
+              :time => { :name => 'TIMESTAMP'},
+              :date => { :name => 'DATE'},
+              :binary => { :name => 'BLOB'},
+              :boolean => { :name => 'BYTEINT'},
+              :raw => { :name => 'BYTE'}
+          }
+      )
     end
 
     #- database_name
@@ -128,7 +130,7 @@ module ::ArJdbc
             new_hash.merge!({k.downcase => v})
           end
           new_hash
-        end
+        end if self.class.lowercase_schema_reflection
         result
       elsif self.class.insert?(sql)
         (@connection.execute_insert(sql) or last_insert_id(sql)).to_i
@@ -153,8 +155,8 @@ module ::ArJdbc
 
     #- select
     def select(sql, *rest)
-    # TJC # Teradata does not like "= NULL", "!= NULL", or "<> NULL".
-    # TJC # Also does not like != so transforming that to <>
+    # TJC - Teradata does not like "= NULL", "!= NULL", or "<> NULL".
+    # TJC - Also does not like != so transforming that to <>
        execute(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL").gsub("!=","<>"), *rest)
     end
 
@@ -206,15 +208,13 @@ module ::ArJdbc
       schema = database_name unless schema
 
       result = select_rows('SELECT' <<
-                               ' DatabaseName, TableName, ColumnName, IndexType, IndexName, UniqueFlag' <<
-                               ' FROM DBC.Indices' <<
+                           ' DatabaseName, TableName, ColumnName, IndexType, IndexName, UniqueFlag' <<
+                           ' FROM DBC.Indices' <<
                            " WHERE TableName = '#{table}' AND DatabaseName = '#{schema}'")
 
       result.map do |row|
-        idx_database_name = row[0].to_s.strip
         idx_table_name = row[1].to_s.strip
         idx_column_name = row[2].to_s.strip
-        idx_index_type = row[3].to_s.strip
         idx_index_name = row[4].to_s.strip
         idx_unique_flag = row[5].to_s.strip
 
@@ -284,7 +284,7 @@ module ::ArJdbc
     # cannot be shortened, one column type cannot be converted to another.
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
       change_column_sql = "ALTER TABLE #{quote_table_name(table_name)} " <<
-        "ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit])}"
+          "ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit])}"
       add_column_options!(change_column_sql, options)
       execute(change_column_sql)
     end
@@ -298,7 +298,7 @@ module ::ArJdbc
     #+ rename_column
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
       execute "ALTER TABLE #{quote_table_name(table_name)} " <<
-        "RENAME COLUMN #{quote_column_name(column_name)} to #{quote_column_name(new_column_name)}"
+                  "RENAME COLUMN #{quote_column_name(column_name)} to #{quote_column_name(new_column_name)}"
     end
 
     #- add_index
@@ -333,10 +333,10 @@ module ::ArJdbc
       # Maps Teradata types of logical Rails types
       def simplified_type(field_type)
         case field_type
-        when /^timestamp with(?:out)? time zone$/ then :datetime
-        when /byteint/i then :boolean
-        else
-          super
+          when /^timestamp with(?:out)? time zone$/ then :datetime
+          when /byteint/i then :boolean
+          else
+            super
         end
       end
     end # column
@@ -350,13 +350,13 @@ module ::ArJdbc
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
       case value
-      when String
-        %Q{'#{quote_string(value)}'}
-      when TrueClass
-        '1'
-      when FalseClass
-        '0'
-      else super
+        when String
+          %Q{'#{quote_string(value)}'}
+        when TrueClass
+          '1'
+        when FalseClass
+          '0'
+        else super
       end
     end
 
@@ -402,9 +402,11 @@ module ActiveRecord
       include ::ArJdbc::Teradata::Column
 
       def initialize(name, *args)
-        args[0].downcase!
 
         if Hash === name
+          if name.has_key? :adapter_class
+            args[0].downcase! if name[:adapter_class].lowercase_schema_reflection
+          end
           super
         else
           super(nil, name, *args)
@@ -417,6 +419,8 @@ module ActiveRecord
 
     class TeradataAdapter < JdbcAdapter
       include ::ArJdbc::Teradata
+
+      cattr_accessor :lowercase_schema_reflection
 
       def initialize(*args)
         super
