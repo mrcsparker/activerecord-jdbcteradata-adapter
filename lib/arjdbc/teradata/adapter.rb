@@ -192,7 +192,7 @@ module ::ArJdbc
       return false unless table
 
       schema = database_name unless schema
-      output = execute("SELECT count(*) as table_count FROM dbc.tables WHERE TableName = '#{table}' AND DatabaseName = '#{schema}'")
+      output = execute("SELECT count(*) as table_count FROM dbc.tables WHERE LOWER(TableName) = '#{table}' AND LOWER(DatabaseName) = '#{schema}'")
       output.first['table_count'].to_i > 0
     end
 
