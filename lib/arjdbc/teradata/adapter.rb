@@ -350,7 +350,11 @@ module ::ArJdbc
       return value.quoted_id if value.respond_to?(:quoted_id)
       case value
         when String
-          %Q{'#{quote_string(value)}'}
+          if !column.nil? && column.type == :binary
+            ''
+          else
+            %Q{'#{quote_string(value)}'}
+          end
         when TrueClass
           '1'
         when FalseClass
