@@ -6,11 +6,11 @@ module ::ArJdbc
     require 'arjdbc/jdbc/serialized_attributes_helper'
     ActiveRecord::Base.class_eval do
       def after_save_with_teradata_lob
+        puts "id #{id}"
         lob_columns = self.class.columns.select { |c| c.sql_type =~ /blob|clob/i }
         lob_columns.each do |column|
           value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
           next if value.nil? # already set NULL
-
           self.class.connection.write_large_object(
             column.type == :binary, column.name,
             self.class.table_name,
@@ -132,7 +132,9 @@ module ::ArJdbc
         end if self.class.lowercase_schema_reflection
         result
       elsif self.class.insert?(sql)
-        (@connection.execute_insert(sql) or last_insert_id(sql)).to_i
+        result = (@connection.execute_insert(sql) or last_insert_id(sql)).to_i
+        puts result
+        result
       else
         @connection.execute_update(sql)
       end
@@ -192,7 +194,9 @@ module ::ArJdbc
       return false unless table
 
       schema = database_name unless schema
-      output = execute("SELECT count(*) as table_count FROM dbc.tables WHERE LOWER(TableName) = '#{table}' AND LOWER(DatabaseName) = '#{schema}'")
+#      output = execute("SELECT count(*) as table_count FROM dbc.tables WHERE TableName = '#{table}' AND LOWER(DatabaseName) = '#{schema.downcase}'")
+      output = execute("SELECT count(*) as table_count FROM dbc.tables WHERE LOWER(TableName) = '#{table.downcase}' AND LOWER(DatabaseName) = '#{schema.downcase}'")
+
       output.first['table_count'].to_i > 0
     end
 
@@ -350,7 +354,7 @@ module ::ArJdbc
       return value.quoted_id if value.respond_to?(:quoted_id)
       case value
         when String
-          if !column.nil? && column.type == :binary
+          if String === value && column && column.type == :binary #!column.nil? && column.type == :binary
             ''
           else
             %Q{'#{quote_string(value)}'}
