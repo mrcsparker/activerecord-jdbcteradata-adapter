@@ -6,7 +6,6 @@ module ::ArJdbc
     require 'arjdbc/jdbc/serialized_attributes_helper'
     ActiveRecord::Base.class_eval do
       def after_save_with_teradata_lob
-        puts "id #{id}"
         lob_columns = self.class.columns.select { |c| c.sql_type =~ /blob|clob/i }
         lob_columns.each do |column|
           value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
@@ -132,9 +131,7 @@ module ::ArJdbc
         end if self.class.lowercase_schema_reflection
         result
       elsif self.class.insert?(sql)
-        result = (@connection.execute_insert(sql) or last_insert_id(sql)).to_i
-        puts result
-        result
+        (@connection.execute_insert(sql) or last_insert_id(sql)).to_i
       else
         @connection.execute_update(sql)
       end
@@ -194,9 +191,8 @@ module ::ArJdbc
       return false unless table
 
       schema = database_name unless schema
-#      output = execute("SELECT count(*) as table_count FROM dbc.tables WHERE TableName = '#{table}' AND LOWER(DatabaseName) = '#{schema.downcase}'")
-      output = execute("SELECT count(*) as table_count FROM dbc.tables WHERE LOWER(TableName) = '#{table.downcase}' AND LOWER(DatabaseName) = '#{schema.downcase}'")
 
+      output = execute("SELECT count(*) as table_count FROM dbc.tables WHERE TableName (NOT CS) = '#{table}' (NOT CS) AND DatabaseName (NOT CS) = '#{schema}' (NOT CS) ")
       output.first['table_count'].to_i > 0
     end
 
@@ -245,6 +241,15 @@ module ::ArJdbc
     #- primary_key
 
     #- primary_keys
+    def primary_keys(table)
+      if self.class.lowercase_schema_reflection
+        @connection.primary_keys(table).map do |key|
+          key.downcase
+        end
+      else
+        @connection.primary_keys(table)
+      end
+    end
 
     #- to_sql
 
@@ -354,8 +359,8 @@ module ::ArJdbc
       return value.quoted_id if value.respond_to?(:quoted_id)
       case value
         when String
-          if String === value && column && column.type == :binary #!column.nil? && column.type == :binary
-            ''
+          if String === value && column && column.type == :binary
+            'NULL'
           else
             %Q{'#{quote_string(value)}'}
           end
