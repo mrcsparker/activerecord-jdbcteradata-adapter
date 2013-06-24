@@ -343,6 +343,7 @@ module ::ArJdbc
         case field_type
           when /^timestamp with(?:out)? time zone$/ then :datetime
           when /byteint/i then :boolean
+          when /blob/i then :binary
           else
             super
         end
