@@ -20,6 +20,12 @@ module ::ArJdbc
       end
     end
 
+    #Used to add after_save lob saving method to ActiveRecord when
+    #this adapter is used.
+    def self.included(base)
+      ActiveRecord::Base.after_save :after_save_with_teradata_lob
+    end
+
     def self.column_selector
       [ /teradata/i, lambda { |cfg, column| column.extend(::ArJdbc::Teradata::Column) } ]
     end
