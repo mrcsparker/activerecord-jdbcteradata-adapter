@@ -93,6 +93,7 @@ module ::ArJdbc
               :time => { :name => 'TIMESTAMP'},
               :date => { :name => 'DATE'},
               :binary => { :name => 'BLOB'},
+              :text => { :name => 'CLOB'},
               :boolean => { :name => 'BYTEINT'},
               :raw => { :name => 'BYTE'}
           }
@@ -366,7 +367,7 @@ module ::ArJdbc
       return value.quoted_id if value.respond_to?(:quoted_id)
       case value
         when String
-          if String === value && column && column.type == :binary
+          if String === value && column && (column.type == :binary || column.type == :text)
             'NULL'
           else
             %Q{'#{quote_string(value)}'}
