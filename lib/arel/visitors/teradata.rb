@@ -203,16 +203,6 @@ module Arel
         ].compact.join ' '
       end
 
-      # def visit_Arel_Nodes_Assignment o
-      #   puts o.left
-      #   puts o.right
-      #   puts column_for(o.left)
-      #   right = quote(o.right, column_for(o.left))
-      #   "#{visit o.left} = #{right}"
-      # end
-
-
-
       # Teradata Helpers
 
       def source_with_lock_for_select_statement(o)
