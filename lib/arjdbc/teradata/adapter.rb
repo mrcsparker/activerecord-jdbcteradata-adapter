@@ -160,9 +160,9 @@ module ::ArJdbc
 
     #- select
     def select(sql, *rest)
-    # TJC - Teradata does not like "= NULL", "!= NULL", or "<> NULL".
-    # TJC - Also does not like != so transforming that to <>
-       execute(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL").gsub("!=","<>"), *rest)
+      # TJC - Teradata does not like "= NULL", "!= NULL", or "<> NULL".
+      # TJC - Also does not like != so transforming that to <>
+      execute(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL").gsub("!=","<>"), *rest)
     end
 
     #- select_rows
@@ -213,10 +213,10 @@ module ::ArJdbc
 
       schema = database_name unless schema
 
-      result = select_rows('SELECT' <<
-                           ' DatabaseName, TableName, ColumnName, IndexType, IndexName, UniqueFlag' <<
-                           ' FROM DBC.Indices' <<
-                           " WHERE TableName = '#{table}' AND DatabaseName = '#{schema}'")
+      result = select_rows("SELECT DatabaseName, TableName, ColumnName, IndexType, IndexName, UniqueFlag" <<
+                           " FROM DBC.Indices" <<
+                           " WHERE TableName (NOT CS) = '#{table}' (NOT CS)" <<
+                           " AND DatabaseName (NOT CS) = '#{schema}' (NOT CS)")
 
       result.map do |row|
         idx_table_name = row[1].to_s.strip
@@ -371,6 +371,12 @@ module ::ArJdbc
             'NULL'
           else
             %Q{'#{quote_string(value)}'}
+          end
+        when Fixnum
+          if Fixnum === value && column and column.type == :string
+            %Q{'#{quote_string(value.to_s)}'}
+          else
+            super
           end
         when TrueClass
           '1'
