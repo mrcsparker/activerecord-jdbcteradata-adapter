@@ -2,6 +2,7 @@ require 'spec_helper'
 
 require 'models/simple_article'
 require 'models/lowercase_model'
+require 'models/model_with_blob'
 
 describe 'Adapter' do
 
@@ -133,6 +134,35 @@ describe 'Adapter' do
 
     after(:each) do
       CreateShirts.down
+    end
+  end
+
+  context 'testing BLOB support' do
+    before(:each) do
+      CreateTestFiles.up
+      @connection = TestFile.connection
+    end
+
+     it 'should be able to save a BLOB' do
+      file = TestFile.new
+      file.name = 'test'
+
+      path = File.join(File.dirname(__FILE__), '')
+
+      bytes = File.open(File.join(path, '/fixtures/wikimedia-commons-poty-2006.jpg'), 'rb')\
+                        .read\
+                        .to_java_bytes
+      file.data = bytes.to_s
+      file.save
+      TestFile.where(:name => 'test').count.should eq(1)
+      TestFile.where(:name => 'test').first.data.should eq(file.data)
+      #Uncomment this line to perform a visual test.
+      #The test.jpg image should be the same as the wikimedia commons jpg image.
+      #File.open(File.join(path, '/fixtures/test.jpg'), 'wb') { |file| file.write(TestFile.first.data.to_s) }
+    end
+
+    after(:each) do
+      CreateTestFiles.down
     end
   end
 end

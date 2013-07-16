@@ -3,6 +3,29 @@ require 'arjdbc/mssql/limit_helpers'
 module ::ArJdbc
   module Teradata
 
+    require 'arjdbc/jdbc/serialized_attributes_helper'
+    ActiveRecord::Base.class_eval do
+      def after_save_with_teradata_lob
+        lob_columns = self.class.columns.select { |c| c.sql_type =~ /blob|clob/i }
+        lob_columns.each do |column|
+          value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
+          next if value.nil? # already set NULL
+          self.class.connection.write_large_object(
+            column.type == :binary, column.name,
+            self.class.table_name,
+            self.class.primary_key,
+            self.class.connection.quote(id), value
+          )
+        end
+      end
+    end
+
+    #Used to add after_save lob saving method to ActiveRecord when
+    #this adapter is used.
+    def self.included(base)
+      ActiveRecord::Base.after_save :after_save_with_teradata_lob
+    end
+
     def self.column_selector
       [ /teradata/i, lambda { |cfg, column| column.extend(::ArJdbc::Teradata::Column) } ]
     end
@@ -70,6 +93,7 @@ module ::ArJdbc
               :time => { :name => 'TIMESTAMP'},
               :date => { :name => 'DATE'},
               :binary => { :name => 'BLOB'},
+              :text => { :name => 'CLOB'},
               :boolean => { :name => 'BYTEINT'},
               :raw => { :name => 'BYTE'}
           }
@@ -175,7 +199,7 @@ module ::ArJdbc
 
       schema = database_name unless schema
 
-      output = execute("SELECT count(*) as table_count FROM dbc.tables WHERE TableName = '#{table}' AND DatabaseName = '#{schema}'")
+      output = execute("SELECT count(*) as table_count FROM dbc.tables WHERE TableName (NOT CS) = '#{table}' (NOT CS) AND DatabaseName (NOT CS) = '#{schema}' (NOT CS) ")
       output.first['table_count'].to_i > 0
     end
 
@@ -224,6 +248,15 @@ module ::ArJdbc
     #- primary_key
 
     #- primary_keys
+    def primary_keys(table)
+      if self.class.lowercase_schema_reflection
+        @connection.primary_keys(table).map do |key|
+          key.downcase
+        end
+      else
+        @connection.primary_keys(table)
+      end
+    end
 
     #- to_sql
 
@@ -238,9 +271,7 @@ module ::ArJdbc
       return false unless table_name
       schema, table = extract_schema_and_table(table_name.to_s)
       return false unless table
-
       schema = database_name unless schema
-
       @connection.columns_internal(table, nil, schema)
     end
 
@@ -319,6 +350,7 @@ module ::ArJdbc
         case field_type
           when /^timestamp with(?:out)? time zone$/ then :datetime
           when /byteint/i then :boolean
+          when /blob/i then :binary
           else
             super
         end
@@ -335,7 +367,11 @@ module ::ArJdbc
       return value.quoted_id if value.respond_to?(:quoted_id)
       case value
         when String
-          %Q{'#{quote_string(value)}'}
+          if String === value && column && (column.type == :binary || column.type == :text)
+            'NULL'
+          else
+            %Q{'#{quote_string(value)}'}
+          end
         when TrueClass
           '1'
         when FalseClass

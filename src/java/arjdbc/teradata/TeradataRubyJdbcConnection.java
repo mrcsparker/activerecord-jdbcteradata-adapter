@@ -15,6 +15,7 @@ import java.math.BigInteger;
 import java.sql.*;
 import java.util.Calendar;
 import java.util.List;
+import org.jruby.util.ByteList;
 
 public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
 
@@ -40,5 +41,30 @@ public class TeradataRubyJdbcConnection extends RubyJdbcConnection {
             return new TeradataRubyJdbcConnection(runtime, klass);
         }
     };
+
+    @Override
+    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
+        throws SQLException {
+        if ( Types.BLOB == type || Types.BINARY == type || Types.VARBINARY == type || Types.LONGVARBINARY == type ) {
+            if ( resultSet.wasNull() ) return runtime.getNil();
+            try {
+                return streamToRuby(runtime, resultSet, column);
+            }
+            catch (IOException e) {
+                throw new SQLException(e.getMessage(), e);
+            }
+        }
+        else {
+            return super.jdbcToRuby(runtime, column, type, resultSet);
+        }
+    }
+
+    protected IRubyObject streamToRuby(
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException, IOException {
+        final byte[] bytes = resultSet.getBytes(column);
+        if ( resultSet.wasNull() ) return runtime.getNil();
+        return runtime.newString( new ByteList(bytes, false) );
+    }
 
 }
