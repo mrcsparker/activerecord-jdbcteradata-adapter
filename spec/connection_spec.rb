@@ -12,8 +12,8 @@ describe 'Connection' do
   it "should create a new connection using JNDI" do
     begin
       import 'org.apache.commons.pool.impl.GenericObjectPool'
-      import 'org.apache.commons.dbcp.PoolingDataSource'
-      import 'org.apache.commons.dbcp.PoolableConnectionFactory'
+      import 'org.apache.commons.dbcp.BasicDataSource'
+      import 'org.apache.commons.dbcp.BasicDataSourceFactory'
       import 'org.apache.commons.dbcp.DriverManagerConnectionFactory'
     rescue NameError => e
       return pending e.message
@@ -21,11 +21,13 @@ describe 'Connection' do
 
     class InitialContextMock
       def initialize
-        connection_pool = GenericObjectPool.new(nil)
-        uri = "jdbc:teradata://#{TERADATA_CONFIG[:host]}/DATABASE=#{TERADATA_CONFIG[:database]},DBS_PORT=#{TERADATA_CONFIG[:port]}"
-        connection_factory = DriverManagerConnectionFactory.new(uri, TERADATA_CONFIG[:username], TERADATA_CONFIG[:password])
-        poolable_connection_factory = PoolableConnectionFactory.new(connection_factory,connection_pool,nil,nil,false,true)
-        @data_source = PoolingDataSource.new(connection_pool)
+        url = "jdbc:teradata://#{TERADATA_CONFIG[:host]}/DATABASE=#{TERADATA_CONFIG[:database]},DBS_PORT=#{TERADATA_CONFIG[:port]}"
+        @data_source = BasicDataSource.new()
+        @data_source.set_driver_class_name('com.teradata.jdbc.TeraDriver')
+        @data_source.set_url(url)
+        @data_source.set_username(TERADATA_CONFIG[:username])
+        @data_source.set_password(TERADATA_CONFIG[:password])
+
         @data_source.access_to_underlying_connection_allowed = true
       end
       def lookup(path)
