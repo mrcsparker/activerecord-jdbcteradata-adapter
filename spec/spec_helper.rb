@@ -9,4 +9,12 @@ TERADATA_CONFIG = {
   :password => 'dbc'
 }
 
+TERADATA_JNDI_CONFIG = {
+  :adapter => 'teradata',
+  :jndi => 'jdbc/TeradataDS',
+  :username => 'dbc',
+  :password => 'dbc',
+  :pool => 20
+}
+
 ActiveRecord::Base.establish_connection(TERADATA_CONFIG)
