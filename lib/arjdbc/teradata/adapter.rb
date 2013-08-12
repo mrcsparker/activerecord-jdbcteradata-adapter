@@ -113,8 +113,6 @@ module ::ArJdbc
 
     #- disconnect!
 
-    #- jdbc_columns
-
     #- exec_query
 
     #- exec_insert
@@ -458,6 +456,15 @@ module ActiveRecord
 
       def jdbc_column_class
         TeradataColumn
+      end
+
+      #- jdbc_columns
+      def jdbc_columns(table_name, name = nil)
+        return false unless table_name
+        schema, table = extract_schema_and_table(table_name.to_s)
+        return false unless table
+        schema = database_name unless schema
+        @connection.columns(table, nil, schema)
       end
       alias_chained_method :columns, :query_cache, :jdbc_columns
 
