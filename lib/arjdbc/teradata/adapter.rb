@@ -1,4 +1,5 @@
 require 'arjdbc/mssql/limit_helpers'
+require 'arjdbc/teradata/explain_support'
 
 module ::ArJdbc
   module Teradata
