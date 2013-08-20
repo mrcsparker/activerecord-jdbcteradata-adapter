@@ -24,6 +24,7 @@ Gem::Specification.new do |s|
     lib/arjdbc/teradata/adapter.rb
     lib/arjdbc/teradata/connection_methods.rb
     lib/arjdbc/teradata/teradata_java.jar
+    lib/arjdbc/teradata/explain_support.rb
     lib/arjdbc/teradata.rb
   ]
 
