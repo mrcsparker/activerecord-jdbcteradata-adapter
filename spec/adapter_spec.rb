@@ -41,6 +41,13 @@ describe 'Adapter' do
       articles.select { |i| i['title'] == article_2.title }.first.should_not be_nil
     end
 
+    it '#explain' do
+      article_1 = Article.create(:title => 'exec_query_1', :body => 'exec_query_1')
+      explain_plan = @adapter.explain('select * from articles')
+      explain_plan.should include('WEBLOG_DEVELOPMENT.articles')
+      explain_plan.should include('total estimated time')
+    end
+
     it '#last_insert_id(table)' do
       article_1 = Article.create(:title => 'exec_query_1', :body => 'exec_query_1')
       article_1.id.should eq(@adapter.last_insert_id('articles'))

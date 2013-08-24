@@ -24,6 +24,7 @@ Gem::Specification.new do |s|
     lib/arjdbc/teradata/adapter.rb
     lib/arjdbc/teradata/connection_methods.rb
     lib/arjdbc/teradata/teradata_java.jar
+    lib/arjdbc/teradata/explain_support.rb
     lib/arjdbc/teradata.rb
   ]
 
@@ -34,6 +35,6 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'rake'
   s.add_development_dependency 'rspec'
   s.add_dependency 'activerecord-jdbc-adapter'
-  s.add_dependency 'activerecord'
+  s.add_dependency 'activerecord', '<= 3.2.13'
   s.add_dependency 'jdbc-teradata'
 end
