@@ -2,7 +2,7 @@ require 'active_record'
 
 TERADATA_CONFIG = {
   :adapter => 'teradata',
-  :host => 'localhost',
+  :host => (ENV['TERADATA_HOST'] || 'localhost'),
   :database => 'weblog_development',
   :port => 1025,
   :username => 'dbc',
