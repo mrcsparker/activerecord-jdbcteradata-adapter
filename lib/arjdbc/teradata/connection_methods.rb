@@ -23,7 +23,11 @@ class ActiveRecord::Base
 
         # For ARJDBC we only need the URL, username, and password
         # We set the database config entry because it's used by the adapter to determine database_name
-        config[:url] = ds.getUrl
+        if ds.respond_to?('getJdbcUrl')
+          config[:url] = ds.getJdbcUrl
+        else
+          config[:url] = ds.getUrl
+        end
         config[:username] ||= ds.getUsername
         config[:database] ||= config[:url][/DATABASE=(.*?),/m, 1] unless config[:url].nil?
         config[:password] ||= ds.getPassword
