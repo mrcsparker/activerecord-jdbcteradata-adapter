@@ -6,6 +6,7 @@ Gem::Specification.new do |s|
   s.homepage    = 'https://github.com/mrcsparker/activerecord-jdbcteradata-adapter'
   s.summary     = %q{Teradata JDBC driver for JRuby on Rails.}
   s.description = %q{Install this gem and require 'teradata' with JRuby on Rails.}
+  s.license = 'MIT'
 
   s.rubyforge_project = 'activerecord-jdbcteradata-adapter'
 
