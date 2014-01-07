@@ -137,7 +137,7 @@ module ::ArJdbc
         end if self.class.lowercase_schema_reflection
         result
       elsif self.class.insert?(sql)
-        (@connection.execute_insert(sql) or last_insert_id(sql)).to_i
+        (@connection.execute_insert(sql) or last_insert_id(_table_name_from_insert(sql))).to_i
       else
         @connection.execute_update(sql)
       end
