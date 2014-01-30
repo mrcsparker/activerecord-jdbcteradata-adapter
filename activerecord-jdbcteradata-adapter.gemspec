@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'activerecord-jdbcteradata-adapter'
-  s.version     = '0.5.1'
+  s.version     = '0.5.2'
   s.authors     = ['Chris Parker']
   s.email       = %w(mrcsparker@gmail.com)
   s.homepage    = 'https://github.com/mrcsparker/activerecord-jdbcteradata-adapter'
@@ -36,6 +36,6 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'rake'
   s.add_development_dependency 'rspec'
   s.add_dependency 'activerecord-jdbc-adapter'
-  s.add_dependency 'activerecord', '<= 3.2.13'
+  s.add_dependency 'activerecord', '~> 3.2.13'
   s.add_dependency 'jdbc-teradata'
 end
