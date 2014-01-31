@@ -727,6 +727,5 @@ class CreateActiveRecordSchema < ActiveRecord::Migration
 
     create_table :ar_fk_test_has_pk, :force => true do |t|
     end
-
   end
 end

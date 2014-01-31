@@ -16,7 +16,7 @@ describe 'SimpleSpec' do
     before(:all) do
       CreateArticles.up
     end
-    
+
     it 'should autoincrement the `id` field' do
       Article.create(:title => 'auto_first', :body => 'auto_first')
       Article.create(:title => 'auto_second', :body => 'auto_second')
@@ -51,7 +51,7 @@ describe 'SimpleSpec' do
     it 'should populate distinct ids for the primary key field after reload' do
       article_1 = Article.create(:title => 'pk1_item_reload', :body => 'pk1_item_reload')
       article_2 = Article.create(:title => 'pk2_item_reload', :body => 'pk2_item_reload')
-      
+
       article_1.reload
       article_2.reload
 
@@ -61,7 +61,7 @@ describe 'SimpleSpec' do
     it 'should populate distinct ids for the primary key field' do
       article_1 = Article.create(:title => 'pk1_item', :body => 'pk1_item')
       article_2 = Article.create(:title => 'pk2_item', :body => 'pk2_item')
-      
+
       article_1.id.should_not eq(article_2.id)
     end
 

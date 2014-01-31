@@ -11,7 +11,6 @@ class CreateArticles < ActiveRecord::Migration
   def self.down
     drop_table :articles
   end
-
 end
 
 class Article < ActiveRecord::Base

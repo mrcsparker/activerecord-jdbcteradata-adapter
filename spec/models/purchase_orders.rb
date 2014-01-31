@@ -72,7 +72,6 @@ class CreateOrderLineItems < ActiveRecord::Migration
   def self.down
     drop_table :order_line_items
   end
-
 end
 
 class Vendor < ActiveRecord::Base
@@ -100,4 +99,3 @@ class PurchaseOrder < ActiveRecord::Base
   has_one :order_feeling, :dependent => :destroy
   accepts_nested_attributes_for :order_feeling, :allow_destroy => true
 end
-

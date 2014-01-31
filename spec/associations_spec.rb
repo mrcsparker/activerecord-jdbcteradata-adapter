@@ -36,12 +36,12 @@ describe 'AssociationsSpec' do
       vendor.save
 
       params = { :purchase_order => {
-        :product_id => vendor.products.first.id,
-        :code => 'Order 2',
-        :quantity => 1,
-        :order_line_items_attributes => [
-          { :item_name => 'Test item' }
-        ]
+                   :product_id => vendor.products.first.id,
+                   :code => 'Order 2',
+                   :quantity => 1,
+                   :order_line_items_attributes => [
+                     { :item_name => 'Test item' }
+                   ]
       } }
 
       purchase_order = PurchaseOrder.create(params[:purchase_order])
@@ -54,11 +54,11 @@ describe 'AssociationsSpec' do
       vendor.save
 
       params = { :purchase_order => {
-        :product_id => vendor.products.first.id,
-        :code => 'Order 2',
-        :quantity => 1,
-        :order_feeling_attributes =>
-          { :status => 'Wonderful' }
+                   :product_id => vendor.products.first.id,
+                   :code => 'Order 2',
+                   :quantity => 1,
+                   :order_feeling_attributes =>
+                   { :status => 'Wonderful' }
 
       } }
 
@@ -72,11 +72,11 @@ describe 'AssociationsSpec' do
       vendor.save
 
       params = { :purchase_order => {
-        :product_id => vendor.products.first.id,
-        :code => 'Order 3',
-        :quantity => 1,
-        :order_feeling_attributes =>
-          { :status => 'Wonderful' }
+                   :product_id => vendor.products.first.id,
+                   :code => 'Order 3',
+                   :quantity => 1,
+                   :order_feeling_attributes =>
+                   { :status => 'Wonderful' }
 
       } }
 

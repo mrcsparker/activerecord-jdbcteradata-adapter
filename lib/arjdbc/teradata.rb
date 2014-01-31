@@ -6,4 +6,3 @@ require 'arjdbc/teradata/adapter'
 
 # Load the java-specific parts
 require 'arjdbc/teradata/teradata_java'
-

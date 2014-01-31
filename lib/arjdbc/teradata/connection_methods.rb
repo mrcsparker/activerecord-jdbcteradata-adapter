@@ -43,10 +43,11 @@ class ActiveRecord::Base
         config[:xviews] ||= 'OFF'
         config[:url] ||= "jdbc:teradata://#{config[:host]}/DATABASE=#{config[:database]},DBS_PORT=#{config[:port]},COP=#{config[:cop]},tmode=#{config[:tmode]},charset=#{config[:charset]},LOG=#{config[:log_level]},USEXVIEWS=#{config[:xviews]}"
       end
-        config[:driver] ||= 'com.teradata.jdbc.TeraDriver'
-        config[:adapter_class] = ActiveRecord::ConnectionAdapters::TeradataAdapter
-        config[:adapter_spec] = ::ArJdbc::Teradata
-        jdbc_connection(config)
+
+      config[:driver] ||= 'com.teradata.jdbc.TeraDriver'
+      config[:adapter_class] = ActiveRecord::ConnectionAdapters::TeradataAdapter
+      config[:adapter_spec] = ::ArJdbc::Teradata
+      jdbc_connection(config)
     end
 
     alias_method :jdbcteradata_connection, :teradata_connection

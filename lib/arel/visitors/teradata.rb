@@ -3,27 +3,25 @@
 require 'arel'
 
 module Arel
-
   module Nodes
-
     # Extending the Ordering class to be comparrison friendly which allows us to call #uniq on a
     # collection of them. See SelectManager#order for more details.
     class Ordering < Arel::Nodes::Unary
       def hash
         expr.hash
       end
+
       def ==(other)
         other.is_a?(Arel::Nodes::Ordering) && self.expr == other.expr
       end
+
       def eql?(other)
         self == other
       end
     end
-
   end
 
   class SelectManager < Arel::TreeManager
-
     AR_CA_SQLSA_NAME = 'Teradata'.freeze
 
     # Getting real Ordering objects is very important for us. We need to be able to call #uniq on
@@ -31,9 +29,10 @@ module Arel
     # to grouping objects for the inner sql during a select statment with an offset/rownumber. So this
     # is here till ActiveRecord & ARel does this for us instead of using SqlLiteral objects.
     alias :order_without_teradata :order
+
     def order(*expr)
       return order_without_teradata(*expr) unless engine_activerecord_teradata_adapter?
-      @ast.orders.concat(expr.map{ |x|
+      @ast.orders.concat(expr.map { |x|
         case x
         when Arel::Attributes::Attribute
           table = Arel::Table.new(x.relation.table_alias || x.relation.name)
@@ -61,7 +60,8 @@ module Arel
     # A friendly over ride that allows us to put a special lock object that can have a default or pass
     # custom string hints down. See the visit_Arel_Nodes_LockWithTeradata delegation method.
     alias :lock_without_teradata :lock
-    def lock(locking=true)
+
+    def lock(locking = true)
       if engine_activerecord_teradata_adapter?
         case locking
         when true
@@ -82,12 +82,10 @@ module Arel
     def engine_activerecord_teradata_adapter?
       @engine.connection && @engine.connection.adapter_name == AR_CA_SQLSA_NAME
     end
-
   end
 
   module Visitors
     class Teradata < Arel::Visitors::ToSql
-
       private
 
       # Teradata ToSql/Visitor (Overides)
@@ -135,7 +133,7 @@ module Arel
 
       # Teradata ToSql/Visitor (Additions)
 
-      def visit_Arel_Nodes_SelectStatementWithOutOffset(o, windowed=false)
+      def visit_Arel_Nodes_SelectStatementWithOutOffset(o, windowed = false)
         find_and_fix_uncorrelated_joins_in_select_statement(o)
         core = o.cores.first
         projections = core.projections
@@ -155,52 +153,52 @@ module Arel
         elsif top_one_everything_for_through_join?(o)
           projections = projections.map { |x| projection_without_expression(x) }
         end
-        [ ('SELECT' if !windowed),
-          (visit(core.set_quantifier) if core.set_quantifier && !windowed),
-          (visit(o.limit) if o.limit && !windowed),
-          (projections.map{ |x| v = visit(x); v == '1' ? '1 AS __wrp' : v }.join(', ')),
-          (source_with_lock_for_select_statement(o)),
-          ("WHERE #{core.wheres.map{ |x| visit(x) }.join ' AND ' }" unless core.wheres.empty?),
-          ("GROUP BY #{groups.map { |x| visit x }.join ', ' }" unless groups.empty?),
-          (visit(core.having) if core.having),
-          ("ORDER BY #{orders.map{ |x| visit(x) }.join(', ')}" if !orders.empty? && !windowed)
-        ].compact.join ' '
+        [('SELECT' if !windowed),
+         (visit(core.set_quantifier) if core.set_quantifier && !windowed),
+         (visit(o.limit) if o.limit && !windowed),
+         (projections.map { |x| v = visit(x); v == '1' ? '1 AS __wrp' : v }.join(', ')),
+         (source_with_lock_for_select_statement(o)),
+         ("WHERE #{core.wheres.map { |x| visit(x) }.join ' AND ' }" unless core.wheres.empty?),
+         ("GROUP BY #{groups.map { |x| visit x }.join ', ' }" unless groups.empty?),
+         (visit(core.having) if core.having),
+         ("ORDER BY #{orders.map { |x| visit(x) }.join(', ')}" if !orders.empty? && !windowed)
+         ].compact.join ' '
       end
 
       def visit_Arel_Nodes_SelectStatementWithOffset(o)
         core = o.cores.first
         o.limit ||= Arel::Nodes::Limit.new(214748364)
         orders = rowtable_orders(o)
-        [ 'SELECT',
-          (visit(o.limit) if o.limit && !windowed_single_distinct_select_statement?(o)),
-          (rowtable_projections(o).map{ |x| visit(x) }.join(', ')),
-          'FROM (',
-            "SELECT #{core.set_quantifier ? 'DISTINCT DENSE_RANK()' : 'ROW_NUMBER()'} OVER (ORDER BY #{orders.map{ |x| visit(x) }.join(', ')}) AS __rn,",
-            visit_Arel_Nodes_SelectStatementWithOutOffset(o,true),
-            ') AS __rnt',
-          (visit(o.offset) if o.offset),
-          'ORDER BY __rnt.__rn ASC'
-        ].compact.join ' '
+        ['SELECT',
+         (visit(o.limit) if o.limit && !windowed_single_distinct_select_statement?(o)),
+         (rowtable_projections(o).map{ |x| visit(x) }.join(', ')),
+         'FROM (',
+         "SELECT #{core.set_quantifier ? 'DISTINCT DENSE_RANK()' : 'ROW_NUMBER()'} OVER (ORDER BY #{orders.map{ |x| visit(x) }.join(', ')}) AS __rn,",
+         visit_Arel_Nodes_SelectStatementWithOutOffset(o,true),
+         ') AS __rnt',
+         (visit(o.offset) if o.offset),
+         'ORDER BY __rnt.__rn ASC'
+         ].compact.join ' '
       end
 
       def visit_Arel_Nodes_SelectStatementForComplexCount(o)
         core = o.cores.first
         o.limit.expr = Arel.sql("#{o.limit.expr} + #{o.offset ? o.offset.expr : 0}") if o.limit
         orders = rowtable_orders(o)
-        [ 'SELECT COUNT(count) AS count_id',
-          'FROM (',
-          'SELECT',
-            (visit(o.limit) if o.limit),
-            "ROW_NUMBER() OVER (ORDER BY #{orders.map{ |x| visit(x) }.join(', ')}) AS __rn,",
-            '1 AS count',
-            (source_with_lock_for_select_statement(o)),
-            ("WHERE #{core.wheres.map{ |x| visit(x) }.join ' AND ' }" unless core.wheres.empty?),
-            ("GROUP BY #{core.groups.map { |x| visit x }.join ', ' }" unless core.groups.empty?),
-            (visit(core.having) if core.having),
-            ("ORDER BY #{o.orders.map{ |x| visit(x) }.join(', ')}" if !o.orders.empty?),
-            ') AS __rnt',
-          (visit(o.offset) if o.offset)
-        ].compact.join ' '
+        ['SELECT COUNT(count) AS count_id',
+         'FROM (',
+         'SELECT',
+         (visit(o.limit) if o.limit),
+         "ROW_NUMBER() OVER (ORDER BY #{orders.map{ |x| visit(x) }.join(', ')}) AS __rn,",
+         '1 AS count',
+         (source_with_lock_for_select_statement(o)),
+         ("WHERE #{core.wheres.map{ |x| visit(x) }.join ' AND ' }" unless core.wheres.empty?),
+         ("GROUP BY #{core.groups.map { |x| visit x }.join ', ' }" unless core.groups.empty?),
+         (visit(core.having) if core.having),
+         ("ORDER BY #{o.orders.map{ |x| visit(x) }.join(', ')}" if !o.orders.empty?),
+         ') AS __rnt',
+         (visit(o.offset) if o.offset)
+         ].compact.join ' '
       end
 
       # Teradata Helpers
@@ -245,7 +243,7 @@ module Arel
         p1 = projections.first
         projections.size == 1 &&
           ((p1.respond_to?(:distinct) && p1.distinct) ||
-            p1.respond_to?(:include?) && p1.include?('DISTINCT'))
+           p1.respond_to?(:include?) && p1.include?('DISTINCT'))
       end
 
       def windowed_single_distinct_select_statement?(o)
@@ -351,7 +349,7 @@ module Arel
           end
         elsif join_in_select_statement?(o) && all_projections_aliased_in_select_statement?(o)
           core.projections.map do |x|
-            Arel.sql visit(x).split(',').map{ |y| y.split(' AS ').last.strip }.join(', ')
+            Arel.sql visit(x).split(',').map { |y| y.split(' AS ').last.strip }.join(', ')
           end
         elsif select_primary_key_sql?(o)
           [Arel.sql("__rnt.#{quote_column_name(core.projections.first.name)}")]
@@ -375,16 +373,14 @@ module Arel
       def projection_without_expression(projection)
         Arel.sql(visit(projection).split(',').map do |x|
           x.strip!
-          x.sub!(/^(COUNT|SUM|MAX|MIN|AVG)\s*(\((.*)\))?/,'\3')
-          x.sub!(/^DISTINCT\s*/,'')
-          x.sub!(/TOP\s*\(\d+\)\s*/i,'')
+          x.sub!(/^(COUNT|SUM|MAX|MIN|AVG)\s*(\((.*)\))?/, '\3')
+          x.sub!(/^DISTINCT\s*/, '')
+          x.sub!(/TOP\s*\(\d+\)\s*/i, '')
           x.strip
         end.join(', '))
       end
-
     end
   end
-
 end
 
 Arel::Visitors::VISITORS['teradata'] = Arel::Visitors::Teradata

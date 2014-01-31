@@ -1,5 +1,5 @@
 module ArJdbc
   module Teradata
-    VERSION = '0.2.0'
+    VERSION = '0.5.2'
   end
 end

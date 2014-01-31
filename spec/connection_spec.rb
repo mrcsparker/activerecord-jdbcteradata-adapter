@@ -9,7 +9,7 @@ describe 'Connection' do
     ActiveRecord::Base.connected?.should be_true
   end
 
-  it "should create a new connection using JNDI" do
+  it 'should create a new connection using JNDI' do
     begin
       import 'org.apache.commons.pool.impl.GenericObjectPool'
       import 'org.apache.commons.dbcp.BasicDataSource'
@@ -22,7 +22,7 @@ describe 'Connection' do
     class InitialContextMock
       def initialize
         url = "jdbc:teradata://#{TERADATA_CONFIG[:host]}/DATABASE=#{TERADATA_CONFIG[:database]},DBS_PORT=#{TERADATA_CONFIG[:port]}"
-        @data_source = BasicDataSource.new()
+        @data_source = BasicDataSource.new
         @data_source.set_driver_class_name('com.teradata.jdbc.TeraDriver')
         @data_source.set_url(url)
         @data_source.set_username(TERADATA_CONFIG[:username])
@@ -30,8 +30,9 @@ describe 'Connection' do
 
         @data_source.access_to_underlying_connection_allowed = true
       end
+
       def lookup(path)
-        if (path == 'java:/comp/env')
+        if path == 'java:/comp/env'
           return self
         else
           return @data_source

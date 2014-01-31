@@ -1,6 +1,6 @@
 module ::ArJdbc
   extension :Teradata do |name|
-    if name =~ /teradata/i 
+    if name =~ /teradata/i
       require 'arjdbc/teradata'
       true
     end

@@ -3,7 +3,6 @@ require 'arjdbc/teradata/explain_support'
 
 module ::ArJdbc
   module Teradata
-
     require 'arjdbc/jdbc/serialized_attributes_helper'
     ActiveRecord::Base.class_eval do
       def after_save_with_teradata_lob
@@ -21,14 +20,14 @@ module ::ArJdbc
       end
     end
 
-    #Used to add after_save lob saving method to ActiveRecord when
-    #this adapter is used.
+    # Used to add after_save lob saving method to ActiveRecord when
+    # this adapter is used.
     def self.included(base)
       ActiveRecord::Base.after_save :after_save_with_teradata_lob
     end
 
     def self.column_selector
-      [ /teradata/i, lambda { |cfg, column| column.extend(::ArJdbc::Teradata::Column) } ]
+      [/teradata/i, lambda { |cfg, column| column.extend(::ArJdbc::Teradata::Column) }]
     end
 
     ## ActiveRecord::ConnectionAdapters::JdbcAdapter
@@ -131,13 +130,13 @@ module ::ArJdbc
         result.map! do |r|
           new_hash = {}
           r.each_pair do |k, v|
-            new_hash.merge!({k.downcase => v})
+            new_hash.merge!({ k.downcase => v })
           end
           new_hash
         end if self.class.lowercase_schema_reflection
         result
       elsif self.class.insert?(sql)
-        (@connection.execute_insert(sql) or last_insert_id(sql)).to_i
+        (@connection.execute_insert(sql) || last_insert_id(_table_name_from_insert(sql))).to_i
       else
         @connection.execute_update(sql)
       end
@@ -161,14 +160,14 @@ module ::ArJdbc
     def select(sql, *rest)
       # TJC - Teradata does not like "= NULL", "!= NULL", or "<> NULL".
       # TJC - Also does not like != so transforming that to <>
-      execute(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL").gsub("!=","<>"), *rest)
+      execute(sql.gsub(/(!=|<>)\s*null/i, 'IS NOT NULL').gsub(/=\s*null/i, 'IS NULL').gsub('!=', '<>'), *rest)
     end
 
     #- select_rows
 
     #- insert_sql
 
-    #= extract_schema_and_table (extra, taken from postgresql adapter)
+    # = extract_schema_and_table (extra, taken from postgresql adapter)
     # Extracts the table and schema name from +name+
     def extract_schema_and_table(name)
       schema, table = name.split('.', 2)
@@ -212,8 +211,8 @@ module ::ArJdbc
 
       schema = database_name unless schema
 
-      result = select_rows("SELECT DatabaseName, TableName, ColumnName, IndexType, IndexName, UniqueFlag" <<
-                           " FROM DBC.Indices" <<
+      result = select_rows('SELECT DatabaseName, TableName, ColumnName, IndexType, IndexName, UniqueFlag' <<
+                           ' FROM DBC.Indices' <<
                            " WHERE TableName (NOT CS) = '#{table}' (NOT CS)" <<
                            " AND DatabaseName (NOT CS) = '#{schema}' (NOT CS)")
 
@@ -347,11 +346,11 @@ module ::ArJdbc
       # Maps Teradata types of logical Rails types
       def simplified_type(field_type)
         case field_type
-          when /^timestamp with(?:out)? time zone$/ then :datetime
-          when /byteint/i then :boolean
-          when /blob/i then :binary
-          else
-            super
+        when /^timestamp with(?:out)? time zone$/ then :datetime
+        when /byteint/i then :boolean
+        when /blob/i then :binary
+        else
+          super
         end
       end
     end # column
@@ -365,23 +364,23 @@ module ::ArJdbc
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
       case value
-        when String
-          if String === value && column && (column.type == :binary || column.type == :text)
-            'NULL'
-          else
-            %Q{'#{quote_string(value)}'}
-          end
-        when Fixnum
-          if Fixnum === value && column and column.type == :string
-            %Q{'#{quote_string(value.to_s)}'}
-          else
-            super
-          end
-        when TrueClass
-          '1'
-        when FalseClass
-          '0'
-        else super
+      when String
+        if String === value && column && (column.type == :binary || column.type == :text)
+          'NULL'
+        else
+          %Q{'#{quote_string(value)}'}
+        end
+      when Fixnum
+        if Fixnum === value && column and column.type == :string
+          %Q{'#{quote_string(value.to_s)}'}
+        else
+          super
+        end
+      when TrueClass
+        '1'
+      when FalseClass
+        '0'
+      else super
       end
     end
 
@@ -411,13 +410,15 @@ module ::ArJdbc
     # maximum length of Teradata identifiers is 30
     def table_alias_length; IDENTIFIER_LENGTH
     end # :nodoc:
+
     def table_name_length;  IDENTIFIER_LENGTH
     end # :nodoc:
+
     def index_name_length;  IDENTIFIER_LENGTH
     end # :nodoc:
+
     def column_name_length; IDENTIFIER_LENGTH
     end # :nodoc:
-
   end
 end
 
@@ -427,7 +428,6 @@ module ActiveRecord
       include ::ArJdbc::Teradata::Column
 
       def initialize(name, *args)
-
         if Hash === name
           if name.has_key? :adapter_class
             args[0].downcase! if name[:adapter_class].lowercase_schema_reflection
@@ -491,7 +491,5 @@ module ActiveRecord
         quoted
       end
     end
-
   end
 end
-
